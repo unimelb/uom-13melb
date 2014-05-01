@@ -39,13 +39,12 @@ CREATE TABLE area_parent (
 
 /*
 Represents a collection [of people] in the system, responsible for an area 
-(the `leaf' areas).
+(the `leaf' areas). Collections are purely for semantic purposes: they
+represent the logical groups of people who are followed by / following some
+other group of people.
 */
 CREATE TABLE collection (
 	collection_id INT NOT NULL,
-
-	name VARCHAR(256) NOT NULL,
-	note TEXT NOT NULL,
 
 	area_id INT NOT NULL,
 
@@ -81,9 +80,11 @@ person).
 CREATE TABLE contact (
 	contact_id INT NOT NULL,
 
-	phone INT,
+	phone VARCHAR(128),
 	email VARCHAR(256),
 	address VARCHAR(256),
+	url TEXT,
+	note TEXT,
 
 	PRIMARY KEY (contact_id)
 );
