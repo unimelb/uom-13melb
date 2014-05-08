@@ -56,7 +56,7 @@ CREATE
 		phone: '13 MELB',
 		email: 'housing-info@unimelb.edu.au'
 	}),
-	(person0:Contact {
+	(person0:Contact:Person {
 		first_name: 'Sally',
 		last_name: 'Cullwick',
 		position: 'Financial aid specialist',
