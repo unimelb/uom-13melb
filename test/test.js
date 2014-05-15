@@ -1,7 +1,13 @@
-var expect = require("chai").expect
+var chai = require("chai")
+	, chaiAsPromised = require("chai-as-promised")
 	, uom_13melb = require("../api")
 	, neo4j = require("neo4j")
+	, q = require("q")
+	, api = require("../api")
 ;
+
+chai.use(chaiAsPromised);
+var expect = chai.expect;
 
 var server = new neo4j.GraphDatabase("http://localhost:7474");
 
@@ -10,26 +16,42 @@ describe("Directory", function () {
 
 	// creates a new directory with the given Neo4J instance
 	describe("Directory", function() {
-
+		it("should be able to query the neo4j database", function (done) {
+			var directory = new api.Directory(server);
+			var query = "MATCH (x) RETURN x LIMIT 1";
+			directory.server.query(query, {}, function (err, results) {
+				expect(err).to.be.null;
+				done();
+			});
+		});
 	});
 
 	// returns the root area for the directory (i.e., the one with no parents)
 	describe("#root_area()", function () {
-		it("should return the root area", function () {
-			var directory = new Directory(server);
-			var area = directory.root_area();
-			expect(area.name).to.equal("13MELB");
+		it("should return the root area", function (done) {
+			var directory = new api.Directory(server);
+			expect(directory.root_area())
+				.to.eventually.have.property("name", "13MELB").notify(done);
 		});
 	});
 
 	// returns the area with given area ID
 	describe("#area()", function () {
-		it("should return the area with the ID", function () {
-			var directory = new Directory(server);
-			var area = directory.root_area();
-			var some_child = area.children()[0];
-			var new_by_id = directory.area(some_child.area_id);
-			expect(new_by_id.area_id).to.equal(some_child.area_id);
+		it("should return the area with the ID", function (done) {
+			var directory = new api.Directory(server);
+			directory.root_area()
+				.then(function (area) {
+					return area.children();
+				})
+				.then(function (children) {
+					return directory.area(children[0]);
+				})
+				.then(function (some_child) {
+					var new_by_id = directory.area(some_child.area_id);
+					expect(new_by_id.area_id).to.equal(some_child.area_id);
+					done();
+				})
+			
 		});
 
 		it("should not return an area when given the ID of a non-area node");
@@ -45,9 +67,7 @@ describe("Area", function () {
 
 	// creates an area with the information
 	describe("Area", function () {
-		it("should create a new area with the given information", function () {
-
-		});
+		it("should create a new area with the given information");
 	});
 
 	// returns the area at the end of the path from the given area
