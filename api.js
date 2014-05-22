@@ -16,24 +16,19 @@ var Directory = function (server) {
 
 Directory.prototype.root_area = function () {
 	var dir = this;
-	var query = [
-		"MATCH (root:Area)",
-		"WHERE NOT ()-[:PARENT_OF]->(root)",
-		"RETURN root"
-	].join(" ");
-	var deferred = q.defer();
-	this.server.query(query, {}, function (err, results) {
-		if (err) {
-			deferred.reject(err);
-			throw err;
+
+	return promise_query(this.server,
+		[
+			"MATCH (root:Area)",
+			"WHERE NOT ()-[:PARENT_OF]->(root)",
+			"RETURN root"
+		],
+		{},
+		function (results) {
+			var node = results[0]["root"]; // should only be one result
+			return new Area(dir, node.id, node.data);
 		}
-		var node = results[0]["root"]; // should only be one result
-		var data = node.data;
-		var area = new Area(dir, node.id, data);
-		deferred.resolve(area);
-		return;
-	});
-	return deferred.promise;
+	);
 }
 
 Directory.prototype.area = function (area_id) {
@@ -67,10 +62,9 @@ var Area = function (dir, area_id, area_info) {
 
 Area.prototype.descend_along_path = function (path) {
 	var area = this;
-	var deferred = q.defer();
 
+	// construct query
 	var query = ["START n=node({root_area_id}) MATCH (n)"];
-	var params = {"root_area_id" : this.get_area_id()};
 	path.forEach(function (area_name, depth) {
 		query.push(util.format(
 			"-[:PARENT_OF]->(x%d:Area { name: \"%s\"})",
@@ -79,94 +73,99 @@ Area.prototype.descend_along_path = function (path) {
 	});
 	var result_node_name = util.format("x%d", path.length - 1);
 	query.push(util.format("RETURN %s", result_node_name));
-	var query_string = query.join(" ");
 
-	area.directory.server.query(query_string, params,
-		function (err, target_node) {
-			if (err) {
-				deferred.reject(err);
-				throw err;
-			}
+	return promise_query(this.directory.server,
+		query, {"root_area_id" : this.get_area_id()},
+		function (target_node) {
 			var target = target_node[0][result_node_name];
-			var target_area = new Area(
+			return new Area(
 				area.directory, target.id, target.data
 			);
-			deferred.resolve(target_area);
 		}
 	);
-	return deferred.promise;
 }
 
 Area.prototype.parent = function () {
 	var area = this;
-	var query = [
-		"START n=node({area_id})",
-		"MATCH (parent:Area)-[:PARENT_OF]->(n)",
-		"RETURN parent"
-	].join(" ");
-	var params = {"area_id" : this.area_id};
-	var deferred = q.defer();
-	this.directory.server.query(query, params, function (err, parents) {
-		if (err) {
-			deferred.reject(err);
-			throw err;
+
+	return promise_query(
+		this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (parent:Area)-[:PARENT_OF]->(n)",
+			"RETURN parent"
+		],
+		{"area_id" : this.area_id},
+		function (parents) {
+			var parent = parents[0]["parent"];
+			return new Area(area.directory, parent.id, parent.data);
 		}
-		var parent = parents[0]["parent"];
-		var parent_area = new Area(area.directory, parent.id, parent.data);
-		deferred.resolve(parent_area);
-	});
-	return deferred.promise;
+	);
 }
 
 Area.prototype.children = function () {
 	var area = this;
-	var query = [
-		"START n=node({area_id})",
-		"MATCH (n)-[:PARENT_OF]->(child:Area)",
-		"RETURN child"
-	].join(" ");
-	var params = {"area_id" : this.area_id};
-	var deferred = q.defer();
-	this.directory.server.query(query, params, function (err, child_nodes) {
-		if (err) {
-			deferred.reject(err);
-			throw err;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (n)-[:PARENT_OF]->(child:Area)",
+			"RETURN child"
+		],
+		{"area_id" : this.area_id},
+		function (child_nodes) {
+			return child_nodes.map(function (child_node) {
+				var child_area = child_node["child"];
+				return new Area(
+					area.directory, child_area.id, child_area.data
+				);
+			});
 		}
-		var children = child_nodes.map(function (child_node) {
-			var child_area = child_node["child"];
-			return new Area(area.directory, child_area.id, child_area.data);
-		});
-		deferred.resolve(children);
-	});
-	return deferred.promise;
+	);
 }
 
 Area.prototype.search = function (search_str) {
 	var area = this;
-	var query = [
-		"START n=node({area_id})",
-		"MATCH (n)-[:PARENT_OF*]->(target:Area)",
-		util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_str),
-		"RETURN target"
-	].join(" ");
-	var params = {"area_id" : this.area_id};
-	var deferred = q.defer();
-	this.directory.server.query(query, params, function (err, results) {
-		if (err) {
-			deferred.reject(err);
-			throw err;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (n)-[:PARENT_OF*]->(target:Area)",
+			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_str),
+			"RETURN target"
+		],
+		{"area_id" : this.area_id},
+		function (results) {
+			return results.map(function (result) {
+				var result_area = result["target"];
+				return new Area(
+					area.directory, result_area.id, result_area.data
+				);
+			});
 		}
-		var result_areas = results.map(function (result) {
-			var result_area = result["target"];
-			return new Area(area.directory, result_area.id, result_area.data);
-		});
-		deferred.resolve(result_areas);
-	});
-	return deferred.promise;
+	);
 }
 
 Area.prototype.collections = function () {
+	var area = this;
 
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (collection:Collection)-[:RESPONSIBLE_FOR*]->(n)",
+			"WHERE NOT ()-[:COMES_BEFORE]->(collection)",
+			"RETURN collection"
+		],
+		{"area_id" : this.area_id},
+		function (results) {
+			return results.map(function (result) {
+				var collection = result["collection"];
+				return new Collection(
+					area.directory, collection.id
+				);
+			});
+		}
+	);
 }
 
 Area.prototype.get_area_id = function () {
@@ -187,8 +186,33 @@ exports.Area = Area;
  * Collection
  */
 
-var Collection = function () {
+var Collection = function (directory, collection_id) {
+	this.directory = directory;
+	this.collection_id = collection_id;
+}
 
+Collection.prototype.contacts = function () {
+	var collection = this;
+	var query = [
+		"START n=node({collection_id})",
+		"MATCH (contact:Contact)-[:IN_COLLECTION*]->(n)",
+		"RETURN contact",
+		"ORDER BY contact.last_name, contact.first_name"
+	].join(" ");
+	var params = {"collection_id" : this.collection_id};
+	var deferred = q.defer();
+	this.directory.server.query(query, params, function (err, results) {
+		if (err) {
+			deferred.reject(err);
+			throw err;
+		}
+		var contacts = results.map(function (result) {
+			var contact = result["contact"];
+			return new Contact(area.directory, contact.id, contact.data);
+		});
+		deferred.resolve(contacts);
+	});
+	return deferred.promise;
 }
 
 exports.Collection = Collection;
@@ -197,15 +221,44 @@ exports.Collection = Collection;
  * Contact
  */
 
-var Contact = function () {
+var Contact = function (directory, contact_id, contact_info) {
+	this.directory = directory;
+	this.contact_id = contact_id;
+	this.contact_info = contact_info;
+}
 
+Contact.prototype.url = function () {
+
+}
+
+Contact.prototype.working_times = function () {
+
+}
+
+Contact.prototype.get_contact_id = function () {
+	return this.contact_id;
+}
+
+Contact.prototype.get_info = function () {
+	return this.contact_info;
 }
 
 exports.Contact = Contact;
 
-/*var query_results_to_areas = function (directory, results, node_name) {
-	return results.map(function (result) {
-		var result_area = result[node_name];
-		return new Area(directory, result_area.id, result_area.data);
+/**
+ * Patterns
+ */
+
+var promise_query = function (server, query, params, process_results) {
+	var query_str = query.join(" ");
+	var deferred = q.defer();
+	server.query(query_str, params, function (err, results) {
+		if (err) {
+			deferred.reject(err);
+			throw err;
+		}
+		var processed_results = process_results(results);
+		deferred.resolve(processed_results);
 	});
-}*/
+	return deferred.promise;
+}

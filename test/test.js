@@ -216,8 +216,8 @@ describe("Area", function () {
 
 	// returns the INITIAL collections within the particular area node
 	// -> [Collection]
-	describe("#collections()", function() {
-		it.skip("should return at least one appropriate collection",
+	describe("#collections()", function () {
+		it("should return the right amount of collections",
 			function (done) {
 				var path = [
 					"BSB Student Services",
@@ -229,12 +229,9 @@ describe("Area", function () {
 				directory.root_area().then(function (area) {
 					return area.descend_along_path(path);
 				}).then(function (area) {
-					return area.collections()
+					return area.collections();
 				}).then(function (collections) {
-					expect(collections.some(function (coll) {
-						// probably should do collections first
-						return false;
-					}))
+					expect(collections).to.have.length(3);
 					done();
 				});
 			}
@@ -245,8 +242,28 @@ describe("Area", function () {
 // {contacts : [...], followed_by : [Collection]}
 describe("Collection", function () {
 
+	// The contacts in the collection
+	// -> [Contacts]
+	describe("#contacts()", function () {
+		it("should return the people in the collection");
+	});
+
+	// returns the successor collections (for when this collection is 
+	// unreachable).
+	// -> [Collection]
+	describe("#successors()", function () {
+		it("should return the successor collections");
+	});
 });
 
 describe("Contact", function () {
+	it("should contain the correct information for a contact");
 
+	describe("#working_times()", function () {
+		it("should return the working hours for the contact");
+	});
+
+	describe("#url()", function () {
+		it("should return the URL for the contact");
+	});
 });
