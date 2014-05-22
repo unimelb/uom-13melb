@@ -193,26 +193,24 @@ var Collection = function (directory, collection_id) {
 
 Collection.prototype.contacts = function () {
 	var collection = this;
-	var query = [
-		"START n=node({collection_id})",
-		"MATCH (contact:Contact)-[:IN_COLLECTION*]->(n)",
-		"RETURN contact",
-		"ORDER BY contact.last_name, contact.first_name"
-	].join(" ");
-	var params = {"collection_id" : this.collection_id};
-	var deferred = q.defer();
-	this.directory.server.query(query, params, function (err, results) {
-		if (err) {
-			deferred.reject(err);
-			throw err;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({collection_id})",
+			"MATCH (contact:Contact)-[:IN_COLLECTION]->(n)",
+			"RETURN contact",
+			"ORDER BY contact.last_name, contact.first_name"
+		],
+		{"collection_id" : this.collection_id},
+		function (results) {
+			return results.map(function (result) {
+				var contact = result["contact"];
+				return new Contact(
+					collection.directory, contact.id, contact.data
+				);
+			});
 		}
-		var contacts = results.map(function (result) {
-			var contact = result["contact"];
-			return new Contact(area.directory, contact.id, contact.data);
-		});
-		deferred.resolve(contacts);
-	});
-	return deferred.promise;
+	);
 }
 
 exports.Collection = Collection;

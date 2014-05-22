@@ -196,6 +196,7 @@ describe("Area", function () {
 	});*/
 
 	// returns the relevant nodes from underneath the Area
+	// can use parent() to traverse back up to discover path
 	// -> [Area]
 	describe("#search()", function () {
 
@@ -239,20 +240,98 @@ describe("Area", function () {
 	});
 });
 
-// {contacts : [...], followed_by : [Collection]}
 describe("Collection", function () {
 
 	// The contacts in the collection
 	// -> [Contacts]
 	describe("#contacts()", function () {
-		it("should return the people in the collection");
+		it("should return the people in the collection", function (done) {
+			var path = [
+				"BSB Student Services",
+				"Student Support Contact List",
+				"Student Support Services",
+				"Financial Aid"
+			];
+			var target_contacts = ["Cullwick", "Anderson"];
+
+			directory.root_area()
+				.then(function (area) {
+					return area.descend_along_path(path);
+				})
+				.then(function (area) {
+					return area.collections();
+				})
+				.then(function (collections) {
+					return q.all(collections.map(function (collection) {
+						return collection.contacts();
+					}));
+				})
+				.then(function (contactss) {
+					expect(contactss.some(function (contacts) {
+						return array_equiv(
+							contacts.map(function (contact) {
+								return contact.get_info().last_name
+							}), target_contacts
+						);
+					})).to.be.true;
+					done();
+				});
+			;
+		});
 	});
 
 	// returns the successor collections (for when this collection is 
 	// unreachable).
 	// -> [Collection]
 	describe("#successors()", function () {
-		it("should return the successor collections");
+		it.skip("should return the successor collections", function (done) {
+			var path = [
+				"BSB Student Services",
+				"Student Support Contact List",
+				"Student Support Services",
+				"Financial Aid"
+			];
+			var target_start = ["Nicol"];
+			var target_end = ["Alpin"];
+
+			var returned_colls;
+
+			directory.root_area()
+				.then(function (area) {
+					return area.descend_along_path(path);
+				})
+				.then(function (area) {
+					return area.collections();
+				})
+				.then(function (collections) {
+					returned_colls = collections;
+					return q.all(collections.map(function (collection) {
+						return collection.contacts();
+					}));
+				})
+				.then(function (contactss) {
+					var first_coll;
+					contactss.some(function (contacts, index) {
+						if (array_equiv(
+							contacts.map(function (contact) {
+								return contact.get_info().last_name
+							}), target_contacts
+						)) {
+							first_coll = returned_colls[index];
+							return true;
+						} else return false;
+					});
+					return first_coll.successors();
+				}).then(function (collections) {
+					returned_colls = collections;
+					return q.all(collections.map(function (collection) {
+						return collection.contacts();
+					}));
+				}).then(function (contactss) {
+					// check for good group of contacts
+					done();
+				});
+		});
 	});
 });
 
@@ -267,3 +346,25 @@ describe("Contact", function () {
 		it("should return the URL for the contact");
 	});
 });
+
+/**
+ * Patterns
+ */
+
+// Arrays contain the same elements (in any order)
+// could replace with sort then zip
+ var array_equiv = function(contacts, target_contacts) {
+ 	return (
+		contacts.length == target_contacts.length
+		&& contacts.every(function (contact) {
+			return target_contacts.some(
+				function (target_contact) {
+					return (
+						contact
+						== target_contact
+					);
+				}
+			)
+		})
+	);
+ }
