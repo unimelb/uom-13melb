@@ -97,6 +97,7 @@ Area.prototype.parent = function () {
 		],
 		{"area_id" : this.area_id},
 		function (parents) {
+			if (!parents.length) return null;
 			var parent = parents[0]["parent"];
 			return new Area(area.directory, parent.id, parent.data);
 		}
@@ -170,47 +171,6 @@ Area.prototype.collections = function () {
 
 Area.prototype.all_contacts = function () {
 	var area = this;
-	/*var expand = function (collections) {
-		var deferred = q.defer();
-		q.all(collections.map(function (collection) {
-			console.log("collections");
-			//console.log(collection);
-			return q.all([collection.contacts(), collection.successors()]);
-		})).then(function (results) {
-			console.log("contacts/successors");
-			return q.all(results.map(function (contacts_succs) {
-				var contacts = contacts_succs[0];
-				var successors = contacts_succs[1];
-				console.log(contacts);
-				console.log(successors);
-				var successors_promise;
-				if (!successors.length) {
-					var deferred = q.defer();
-					successors_promise = deferred.promise();
-					deferred.resolve([]);
-				} else {
-					successors_promise = expand(successors);
-				}
-				return q.all([
-					successors_promise,
-					q.all(contacts.map(function (contact) {
-						return contact.refresh();
-					}))
-				]);
-			}));
-		}).then(function (results) {
-			console.log("resolving");
-			var collection = results.map(function (contacts_succs) {
-				return {
-					"successors" : contacts_succs[0],
-					"contacts" : contacts_succs[1]
-				};
-			});
-			deferred.resolve(collection);
-		});
-		return deferred.promise();
-	};
-	return this.collections().then(expand);*/
 
 	return promise_query(this.directory.server,
 		[

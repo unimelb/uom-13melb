@@ -7,10 +7,10 @@ var airbrake = require("airbrake");
 var app = express();
 
 app.all('*', function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "X-Requested-With");
-  res.header("Content-Type", "application/json");
-  next();
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Headers", "X-Requested-With");
+	res.header("Content-Type", "application/json");
+	next();
  });
 
 var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
@@ -34,52 +34,62 @@ var send_json = function (res, object) {
 		});
 	}
 	recursive_delete(object, "directory");
-	res.send(JSON.stringify(object));
+	res.json(object);
 }
 
-app.param("area", function(req, res, next, id) {
+app.param("area", function (req, res, next, id) {
+	var promise;
 	if (id == "root") {
-		req.area = dir.root_area();
+		promise = dir.root_area();
 	} else {
-		req.area = dir.area(id);
+		promise = dir.area(id);
 	}
-	next();
+	promise.then(
+		function (area) {
+			req.area = area;
+			next();
+		},
+		function (err) {
+			next(new Error("no area"));
+		}
+	);
 });
 
-app.get("/", function (req, res) {
+app.get("/", function (req, res, next) {
 	res.send("{}");
 });
 
-app.get("/area/:area", function (req, res) {
-	req.area.then(function (area) {
+app.get("/area/:area", function (req, res, next) {
+	send_json(res, req.area);
+	next();
+});
+
+app.get("/area/:area/children", function (req, res, next) {
+	req.area.children().then(function (area) {
 		send_json(res, area);
+		next();
 	});
 });
 
-app.get("/area/:area/children", function (req, res) {
-	req.area.then(function (area) { return area.children(); }).then(function (area) {
+app.get("/area/:area/parent", function (req, res, next) {
+	req.area.parent().then(function (area) {
 		send_json(res, area);
-	});
-});
-
-app.get("/area/:area/parent", function (req, res) {
-	req.area.then(function (area) { return area.parent(); }).then(function (area) {
-		send_json(res, area);
+		next();
 	});
 });
 
 // ?q=query
-app.get("/area/:area/search", function (req, res) {
-	req.area.then(function (area) {
-		area.search(decodeURIComponent(req.query.q)).then(function (area) {
-			send_json(res, area);
-		});
+app.get("/area/:area/search", function (req, res, next) {
+	req.area.search(decodeURIComponent(req.query.q)).then(function (area) {
+		send_json(res, area);
+		next();
 	});
 });
 
-app.get("/area/:area/all_contacts", function (req, res) {
-	req.area.then(function (area) { return area.all_contacts(); }).then(function (result) {
+app.get("/area/:area/all_contacts", function (req, res, next) {
+	req.area.all_contacts().then(function (result) {
 		send_json(res, result);
+		next();
 	});
 });
 
