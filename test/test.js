@@ -10,9 +10,7 @@ var chai = require("chai")
 chai.use(chaiAsPromised);
 var expect = chai.expect;
 
-var server = new neo4j.GraphDatabase(
-	"http://app25709970:Syd0SMD3fm7GPkeOQ9W4@app25709970.sb02.stations.graphenedb.com:24789"
-);
+var server = new neo4j.GraphDatabase(process.env.GRAPHENEDB_URL);
 
 var directory;
 

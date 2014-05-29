@@ -13,12 +13,10 @@ app.all('*', function(req, res, next) {
   next();
  });
 
-var airbrake = require('airbrake').createClient("ddbfe232e617465432f2197edc683d7d");
+var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
 app.use(airbrake.expressHandler());
 
-var server = new neo4j.GraphDatabase(
-	"http://app25709970:Syd0SMD3fm7GPkeOQ9W4@app25709970.sb02.stations.graphenedb.com:24789"
-);
+var server = new neo4j.GraphDatabase(process.env.GRAPHENEDB_URL);
 
 var dir = new directory.Directory(server);
 
