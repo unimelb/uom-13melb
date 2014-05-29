@@ -2,20 +2,22 @@
 
 var chai = require("chai")
 	, chaiAsPromised = require("chai-as-promised")
-	, uom_13melb = require("../api")
 	, neo4j = require("neo4j")
 	, q = require("q")
-	, api = require("../api")
+	, directory = require("../directory")
 ;
 
 chai.use(chaiAsPromised);
 var expect = chai.expect;
 
-var server = new neo4j.GraphDatabase("http://localhost:7474");
+var server = new neo4j.GraphDatabase(
+	"http://app25709970:Syd0SMD3fm7GPkeOQ9W4@app25709970.sb02.stations.graphenedb.com:24789"
+);
+
 var directory;
 
 beforeEach(function () {
-	directory = new api.Directory(server);
+	directory = new directory.Directory(server);
 })
 
 // Encapsulates the entire directory system
@@ -25,6 +27,7 @@ describe("Directory", function () {
 	it("should be able to query the neo4j database", function (done) {
 		var query = "MATCH (x) RETURN x LIMIT 1";
 		directory.server.query(query, {}, function (err, results) {
+			console.log(results);
 			expect(err).to.be.null;
 			done();
 		});
@@ -238,6 +241,28 @@ describe("Area", function () {
 			}
 		);
 	});
+
+	describe("#all_contacts()", function () {
+		it("should return all contacts in the area", function (done) {
+			var path = [
+				"BSB Student Services",
+				"Student Support Contact List",
+				"Student Support Services",
+				"Financial Aid"
+			];
+
+			directory.root_area().then(function (area) {
+				return area.descend_along_path(path);
+			}).then(function (area) {
+				return area.all_contacts();
+			}).then(function (all_contacts) {
+				/*expect(all_contacts.map(function (collection) {
+					return collection.contacts;
+				})))*/
+				done();
+			});
+		})
+	})
 });
 
 describe("Collection", function () {
@@ -337,14 +362,6 @@ describe("Collection", function () {
 
 describe("Contact", function () {
 	it("should contain the correct information for a contact");
-
-	describe("#working_times()", function () {
-		it("should return the working hours for the contact");
-	});
-
-	describe("#url()", function () {
-		it("should return the URL for the contact");
-	});
 });
 
 /**
