@@ -16,8 +16,6 @@ app.all('*', function(req, res, next) {
 var airbrake = require('airbrake').createClient("ddbfe232e617465432f2197edc683d7d");
 app.use(airbrake.expressHandler());
 
-app.listen(80);
-
 var server = new neo4j.GraphDatabase(
 	"http://app25709970:Syd0SMD3fm7GPkeOQ9W4@app25709970.sb02.stations.graphenedb.com:24789"
 );
@@ -87,8 +85,6 @@ app.get("/area/:area/all_contacts", function (req, res) {
 	});
 });
 
-/**
- * Collection
- */
+app.listen(process.env.PORT || 80);
 
 
