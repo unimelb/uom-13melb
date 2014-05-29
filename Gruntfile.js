@@ -14,7 +14,7 @@ module.exports = function (grunt) {
     pkg: grunt.file.readJSON('package.json'),
     develop: {
       server: {
-        file: 'app.js'
+        file: 'server.js'
       }
     },
     mochacli: {
@@ -31,8 +31,7 @@ module.exports = function (grunt) {
       },
       server: {
         files: [
-          'app.js',
-          'routes/*.js'
+          'server.js'
         ],
         tasks: ['develop', 'delayed-livereload']
       },

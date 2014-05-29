@@ -169,26 +169,102 @@ Area.prototype.collections = function () {
 }
 
 Area.prototype.all_contacts = function () {
-	var expand = function (collections) {
+	var area = this;
+	/*var expand = function (collections) {
 		var deferred = q.defer();
 		q.all(collections.map(function (collection) {
+			console.log("collections");
+			//console.log(collection);
 			return q.all([collection.contacts(), collection.successors()]);
-		})).spread(function (contacts, successors) {
-			return q.all([
-				q.all(expand(successors)),
-				q.all(contacts.map(function (contact) {
-					return contact.refresh();
-				}))
-			]);
-		}).spread(function (successors, contact_details) {
-			q.resolve({
-				"successors" : successors,
-				"contacts" : contact_details
+		})).then(function (results) {
+			console.log("contacts/successors");
+			return q.all(results.map(function (contacts_succs) {
+				var contacts = contacts_succs[0];
+				var successors = contacts_succs[1];
+				console.log(contacts);
+				console.log(successors);
+				var successors_promise;
+				if (!successors.length) {
+					var deferred = q.defer();
+					successors_promise = deferred.promise();
+					deferred.resolve([]);
+				} else {
+					successors_promise = expand(successors);
+				}
+				return q.all([
+					successors_promise,
+					q.all(contacts.map(function (contact) {
+						return contact.refresh();
+					}))
+				]);
+			}));
+		}).then(function (results) {
+			console.log("resolving");
+			var collection = results.map(function (contacts_succs) {
+				return {
+					"successors" : contacts_succs[0],
+					"contacts" : contacts_succs[1]
+				};
 			});
+			deferred.resolve(collection);
 		});
 		return deferred.promise();
 	};
-	return this.collections.then(expand);
+	return this.collections().then(expand);*/
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (n)<-[:RESPONSIBLE_FOR]-(c:Collection)",
+			"MATCH (contact:Contact)-[:IN_COLLECTION]->(c)",
+			"OPTIONAL MATCH (c)-[succ:COMES_BEFORE]->(c2:Collection)",
+			"RETURN contact,c,succ,c2"
+		],
+		{"area_id" : this.area_id},
+		function (results) {
+
+			var contacts = [];
+			var all_contacts = {};
+			var parent = {};
+			results.forEach(function (result) {
+				var coll_id = result["c"].id;
+				if (!(coll_id in all_contacts)) {
+					all_contacts[coll_id] = {
+						contacts : [],
+						successors : []
+					};
+
+					if (result["c2"] != null) {
+						parent[result["c2"].id] = {
+							"parent" : result["c"].id,
+							"note" : result["succ"].data.note
+						};
+					}
+				}
+				all_contacts[coll_id].contacts.push(
+					new Contact(
+						area.directory,
+						result["contact"].id,
+						result["contact"].data
+					)
+				);
+
+			});
+
+			Object.keys(all_contacts).forEach(function (coll) {
+				if (!(coll in parent)) {
+					contacts.push(all_contacts[coll]);
+				} else {
+					all_contacts[parent[coll].parent].successors.push({
+						"collection" : all_contacts[coll],
+						"note" : parent[coll].note
+					});
+				}
+			});
+
+			return contacts;
+		}
+	);
 }
 
 Area.prototype.get_area_id = function () {
@@ -236,6 +312,26 @@ Collection.prototype.contacts = function () {
 	);
 }
 
+Collection.prototype.successors = function () {
+	var collection = this;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({collection_id})",
+			"MATCH (n)-[link:COMES_BEFORE]->(succ:Collection)",
+			"RETURN succ, link"
+		],
+		{"collection_id" : this.collection_id},
+		function (results) {
+			return results.map(function (result) {
+				return new Collection(
+					collection.directory, result["succ"].id
+				);
+			})
+		}
+	);
+}
+
 exports.Collection = Collection;
 
 /**
@@ -259,8 +355,10 @@ Contact.prototype.refresh = function () {
 		],
 		{"contact_id" : this.contact_id},
 		function (results) {
-			var url = result["url"][0];
-			contact.url = url.data;
+			if (results.length) {
+				var url = results[0]["url"];
+				contact.url = url.data;
+			}
 			return contact;
 		}
 	);
