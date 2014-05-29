@@ -86,5 +86,5 @@ app.get("/area/:area/all_contacts", function (req, res) {
 });
 
 app.listen(process.env.PORT || 80);
-
+console.log("Listening on port " + (process.env.PORT || 80));
 
