@@ -125,6 +125,56 @@ Area.prototype.children = function () {
 	);
 }
 
+Area.prototype.descendents = function () {
+	var area = this;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (n)-[depth:PARENT_OF*]->(dp:Area)-[:PARENT_OF]->(d:Area)",
+			"RETURN d, depth, dp"
+		],
+		{"area_id" : this.area_id},
+		function (descendents) {
+			var tree_dict = {};
+			tree_dict[area.area_id] = [];
+			var area_dict = {};
+			area_dict[area.area_id] = area;
+			
+			descendents.forEach(function (d) {
+				var depth = d.depth.length;
+			
+				if (depth == 1 && tree_dict[area.area_id].indexOf(d.dp.id) == -1) {
+					tree_dict[area.area_id].push(d.dp.id);
+					area_dict[d.dp.id] = new Area(area.directory, d.dp.id, d.dp.data);
+				}
+
+				if (!(d.dp.id in tree_dict)) {
+					tree_dict[d.dp.id] = [];
+				}
+				tree_dict[d.dp.id].push(d.d.id);
+				area_dict[d.d.id] = new Area(area.directory, d.d.id, d.d.data);
+			});
+			var queue = [];
+			var attach_descendents = function (node) {
+				node.children = [];
+				if (node.area.area_id in tree_dict) {
+					tree_dict[node.area.area_id].forEach(function (child) {
+						var new_area = {area: area_dict[child]};
+						attach_descendents(new_area);
+						node.children.push(new_area);
+					});
+				}
+			}
+
+			var root_node = {"area" : area};
+			attach_descendents(root_node);
+
+			return root_node;
+		}
+	);
+}
+
 Area.prototype.path = function (base_area_id) {
 	var area = this;
 
