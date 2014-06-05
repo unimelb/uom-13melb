@@ -72,7 +72,7 @@ app.get("/area/:area/children", function (req, res, next) {
 });
 
 app.get("/area/:area/path", function (req, res, next) {
-	req.area.path().then(function (area) {
+	req.area.path(req.query.base).then(function (area) {
 		send_json(res, area);
 		next();
 	});

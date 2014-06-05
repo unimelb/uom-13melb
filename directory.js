@@ -125,24 +125,33 @@ Area.prototype.children = function () {
 	);
 }
 
-Area.prototype.path = function () {
+Area.prototype.path = function (base_area_id) {
 	var area = this;
+
+	if (base_area_id) base_area_id = parseInt(base_area_id);
 
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
+			base_area_id ? ", base=node({base_area})" : "",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(n)",
+			base_area_id
+				? "WHERE (base)-[:PARENT_OF*]->(m) OR (base) = (m)"
+				: ""
+			,
 			"RETURN link, m, n"
 		],
-		{"area_id" : this.area_id},
+		{"area_id" : this.area_id, "base_area" : base_area_id},
 		function (results) {
 			var path = [];
-			path[0] = new Area(area.directory, results[0].n.id, results[0].n.data);
-			results.forEach(function (result) {
-				var pos = result.link.length;
-				path[pos] = new Area(area.directory, result.m.id, result.m.data);
-			});
-			return path.reverse();
+			if (results.length) {
+				path[0] = new Area(area.directory, results[0].n.id, results[0].n.data);
+				results.forEach(function (result) {
+					var pos = result.link.length;
+					path[pos] = new Area(area.directory, result.m.id, result.m.data);
+				});
+			}
+			return path.reverse().slice(1);
 		}
 	);
 }
@@ -155,19 +164,13 @@ Area.prototype.search = function (search_str) {
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (n)-[:PARENT_OF*]->(target:Area)",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
 			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
+			"AND ((n)-[:PARENT_OF*]->(m:Area) OR (n) = (m))",
 			"RETURN target, link, m"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
-			/*return results.map(function (result) {
-				var result_area = result["target"];
-				return new Area(
-					area.directory, result_area.id, result_area.data
-				);
-			});*/
 			var paths = {};
 			results.forEach(function (result) {
 				var a = result.target;
@@ -193,7 +196,7 @@ Area.prototype.search = function (search_str) {
 			});
 			var result_list = [];
 			Object.keys(paths).forEach(function (target_id) {
-				result_list.push(paths[target_id].reverse());
+				result_list.push(paths[target_id].reverse().slice(1));
 			});
 			return result_list;
 		}
