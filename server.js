@@ -11,7 +11,7 @@ app.all('*', function(req, res, next) {
 	res.header("Access-Control-Allow-Headers", "X-Requested-With");
 	res.header("Content-Type", "application/json");
 	next();
- });
+});
 
 var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
 app.use(airbrake.expressHandler());
@@ -70,6 +70,13 @@ app.get("/area/:area/children", function (req, res, next) {
 		next();
 	});
 });
+
+app.get("/area/:area/path", function (req, res, next) {
+	req.area.path().then(function (area) {
+		send_json(res, area);
+		next();
+	});
+})
 
 app.get("/area/:area/parent", function (req, res, next) {
 	req.area.parent().then(function (area) {

@@ -167,6 +167,36 @@ describe("Directory System", function () {
 			);
 		});
 
+		describe("#path()", function () {
+			it("should return the path to the area",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services"
+					];
+
+					directory.root_area()
+						.then(function (area) {
+							return area.descend_along_path(path);
+						})
+						.then(function (area) {
+							return area.path();
+						}).then(function (path_to_area) {
+							expect(path_to_area.slice(1).every(
+								function (node, index) {
+									return (
+										node.name == path[index] ||
+										index >= path.length
+									);
+								}
+							)).to.be.true;
+							done();
+						})
+				}
+			);
+		});
+
 		// USEFULNESS QUESTIONABLE - overengineering?
 		// can just use children() repeatedly, at least for the moment
 

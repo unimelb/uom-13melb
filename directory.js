@@ -125,6 +125,28 @@ Area.prototype.children = function () {
 	);
 }
 
+Area.prototype.path = function () {
+	var area = this;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (m:Area)-[link:PARENT_OF*]->(n)",
+			"RETURN link, m, n"
+		],
+		{"area_id" : this.area_id},
+		function (results) {
+			var path = [];
+			path[0] = new Area(area.directory, results[0].n.id, results[0].n.data);
+			results.forEach(function (result) {
+				var pos = result.link.length;
+				path[pos] = new Area(area.directory, result.m.id, result.m.data);
+			});
+			return path.reverse();
+		}
+	);
+}
+
 Area.prototype.search = function (search_str) {
 	var area = this;
 	var search_regex = util.format("(%s)", search_str.replace(/ /g, "|"));
