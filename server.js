@@ -93,6 +93,6 @@ app.get("/area/:area/all_contacts", function (req, res, next) {
 	});
 });
 
-app.listen(process.env.PORT || 80);
-console.log("Listening on port " + (process.env.PORT || 80));
+app.listen(process.env.PORT || 5000);
+console.log("Listening on port " + (process.env.PORT || 5000));
 

@@ -57,7 +57,7 @@ var Area = function (dir, area_id, area_info) {
 	this.directory = dir;
 	this.area_id = area_id;
 	this.name = area_info.name;
-	if (area_info.notes !== undefined) this.notes = area_info.notes;
+	if (area_info.note !== undefined) this.note = area_info.note;
 }
 
 Area.prototype.descend_along_path = function (path) {
@@ -127,22 +127,53 @@ Area.prototype.children = function () {
 
 Area.prototype.search = function (search_str) {
 	var area = this;
+	var search_regex = util.format("(%s)", search_str.replace(/ /g, "|"));
+	console.log(search_regex);
 
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
 			"MATCH (n)-[:PARENT_OF*]->(target:Area)",
-			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_str),
-			"RETURN target"
+			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
+			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
+			"RETURN target, link, m"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
-			return results.map(function (result) {
+			/*return results.map(function (result) {
 				var result_area = result["target"];
 				return new Area(
 					area.directory, result_area.id, result_area.data
 				);
+			});*/
+			var paths = {};
+			results.forEach(function (result) {
+				var a = result.target;
+				paths[a.id] =[];
+				paths[a.id][0] = new Area(area.directory, a.id, a.data);
 			});
+			results.forEach(function (result) {
+				var distance = result.link.length;
+				var target = result.target;
+				var m = result.m;
+
+				// delete if part of path
+				if (m.id in paths) {
+					console.log(m.id);
+					delete paths[m.id];
+				}
+
+				if (target.id in paths) {
+					paths[target.id][distance] = new Area(
+						area.directory, m.id, m.data
+					);
+				}
+			});
+			var result_list = [];
+			Object.keys(paths).forEach(function (target_id) {
+				result_list.push(paths[target_id].reverse());
+			});
+			return result_list;
 		}
 	);
 }
