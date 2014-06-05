@@ -167,6 +167,28 @@ describe("Directory System", function () {
 			);
 		});
 
+		describe("#descendents()", function () {
+			it("should return a descendent of the area",
+				function (done) {
+					var name = "Financial Aid";
+					directory.root_area().then(function (area) {
+						return area.descendents();
+					}).then(function (desc) {
+						var contains = function (area, n) {
+							return (
+								area.area.name == n ||
+								area.children.some(function (child) {
+									return contains(child, n);
+								})
+							);
+						}
+						expect(contains(desc, name)).to.be.true;
+						done();
+					});
+				}
+			);
+		})
+
 		describe("#path()", function () {
 			it("should return the path to the area",
 				function (done) {
@@ -183,7 +205,7 @@ describe("Directory System", function () {
 						.then(function (area) {
 							return area.path();
 						}).then(function (path_to_area) {
-							expect(path_to_area.slice(1).every(
+							expect(path_to_area.every(
 								function (node, index) {
 									return (
 										node.name == path[index] ||
@@ -197,36 +219,6 @@ describe("Directory System", function () {
 			);
 		});
 
-		// USEFULNESS QUESTIONABLE - overengineering?
-		// can just use children() repeatedly, at least for the moment
-
-		// users often just want to see everything in a certain area
-		// maybe even auto-expand based on descendent count?
-		// -> [{Area : [{Area : ...}]}]
-		/*describe("#descendents()", function () {
-			it("should return at least one path down the tree", function (done) {
-
-				var path = [
-					"BSB Student Services",
-					"Student Support Contact List",
-					"Student Support Services"
-				];
-
-				directory.root_area().then(function (area) {
-					area.descendents()
-				}).then(function (descendents) {
-					path.every(function (area_name) {
-						Object.keys(descendents).some(function (child)) {
-							if (child.area_name == area_name) {
-								descendents = 
-								return 
-							} else return false;
-						}
-					});
-				});
-			});
-		});*/
-
 		// returns the relevant nodes from underneath the Area
 		// can use parent() to traverse back up to discover path
 		// -> [Area]
@@ -239,7 +231,7 @@ describe("Directory System", function () {
 					})
 					.then(function (results) {
 						expect(results.map(function (result) {
-							return result.get_name()
+							return result[result.length-1].get_name()
 						})).to.contain("Financial Aid");
 						done();
 					})
