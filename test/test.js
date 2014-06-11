@@ -286,7 +286,30 @@ describe("Directory System", function () {
 					})).to.be.true;
 					done();
 				});
-			})
+			});
+		});
+
+		describe("#descendent_contact_count()", function () {
+			it(
+				"should return the count of all contacts " +
+				"at or beneath the area",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services"
+					];
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.descendent_contact_count();
+					}).then(function (count) {
+						expect(count["contacts"]).to.equal(13);
+						done();
+					})
+				}
+			)
 		})
 	});
 

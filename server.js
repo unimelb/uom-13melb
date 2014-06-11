@@ -107,6 +107,13 @@ app.get("/area/:area/all_contacts", function (req, res, next) {
 	});
 });
 
+app.get("/area/:area/descendent_contact_count", function (req, res, next) {
+	req.area.descendent_contact_count().then(function (result) {
+		send_json(res, result);
+		next();
+	});
+});
+
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));
 

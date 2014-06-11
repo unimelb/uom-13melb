@@ -333,6 +333,22 @@ Area.prototype.all_contacts = function () {
 	);
 }
 
+Area.prototype.descendent_contact_count = function () {
+	var area = this;
+
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (n)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
+			"RETURN COUNT(a)"
+		],
+		{area_id : this.area_id},
+		function (results) {
+			return {"contacts" : results[0]["COUNT(a)"]};
+		}
+	);
+}
+
 Area.prototype.get_area_id = function () {
 	return this.area_id;
 }
