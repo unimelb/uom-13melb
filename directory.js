@@ -470,7 +470,6 @@ var promise_query = function (server, query, params, process_results) {
 	server.query(query_str, params, function (err, results) {
 		if (err) {
 			deferred.reject(err);
-			throw err;
 		}
 		var processed_results = process_results(results);
 		deferred.resolve(processed_results);

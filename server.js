@@ -50,7 +50,8 @@ app.param("area", function (req, res, next, id) {
 			next();
 		},
 		function (err) {
-			next(new Error("no area"));
+			res.send({error: "No area."});
+			req.area = null;
 		}
 	);
 });
@@ -60,58 +61,74 @@ app.get("/", function (req, res, next) {
 });
 
 app.get("/area/:area", function (req, res, next) {
-	send_json(res, req.area);
-	next();
+	if (req.area) {
+		send_json(res, req.area);
+	}
+		next();
 });
 
 app.get("/area/:area/children", function (req, res, next) {
-	req.area.children().then(function (area) {
-		send_json(res, area);
-		next();
-	});
+	if (req.area) {
+		req.area.children().then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	} else next();
 });
 
 app.get("/area/:area/descendents", function (req, res, next) {
-	req.area.descendents().then(function (area) {
-		send_json(res, area);
-		next();
-	})
+	if (req.area) {
+		req.area.descendents().then(function (area) {
+			send_json(res, area);
+			next();
+		})
+	} else next();
 });
 
 app.get("/area/:area/path", function (req, res, next) {
-	req.area.path(req.query.base).then(function (area) {
-		send_json(res, area);
-		next();
-	});
+	if (req.area) {
+		req.area.path(req.query.base).then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	} else next();
 })
 
 app.get("/area/:area/parent", function (req, res, next) {
-	req.area.parent().then(function (area) {
-		send_json(res, area);
-		next();
-	});
+	if (req.area) {
+		req.area.parent().then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	} else next();
 });
 
 // ?q=query
 app.get("/area/:area/search", function (req, res, next) {
-	req.area.search(decodeURIComponent(req.query.q)).then(function (area) {
-		send_json(res, area);
-		next();
-	});
+	if (req.area) {
+		req.area.search(decodeURIComponent(req.query.q)).then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	} else next();
 });
 
 app.get("/area/:area/all_contacts", function (req, res, next) {
-	req.area.all_contacts().then(function (result) {
-		send_json(res, result);
-		next();
-	});
+	if (req.area) {
+		req.area.all_contacts().then(function (result) {
+			send_json(res, result);
+			next();
+		});
+	} else next();
 });
 
 app.get("/area/:area/descendent_contact_count", function (req, res, next) {
-	req.area.descendent_contact_count().then(function (result) {
-		send_json(res, result);
-		next();
-	});
+	if (req.area) {
+		req.area.descendent_contact_count().then(function (result) {
+			send_json(res, result);
+			next();
+		});
+	} else next();
 });
 
 app.listen(process.env.PORT || 5000);
