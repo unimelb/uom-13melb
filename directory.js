@@ -217,14 +217,19 @@ Area.prototype.path = function (base_area_id) {
 
 Area.prototype.search = function (search_str) {
 	var area = this;
-	var search_regex = util.format("(%s)", search_str.replace(/ /g, "|"));
-	console.log(search_regex);
+	search_str = search_str.replace("/ +/g", " ").split(" ");
+	var search_query = search_str.map(function (term) {
+		return util.format("target.name =~ \"(?i).*%s.*\"", term);
+	}).join(" AND ");
+	//var search_regex = util.format("(%s)", search_str.replace(/ /g, "|"));
+	//console.log(search_regex);
 
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
-			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
+			//util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
+			util.format("WHERE %s", search_query),
 			"AND ((n)-[:PARENT_OF*]->(m:Area) OR (n) = (m))",
 			"RETURN target, link, m"
 		],
