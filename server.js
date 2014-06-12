@@ -52,6 +52,7 @@ app.param("area", function (req, res, next, id) {
 		function (err) {
 			res.send({error: "No area."});
 			req.area = null;
+			next();
 		}
 	);
 });

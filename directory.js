@@ -131,7 +131,8 @@ Area.prototype.descendents = function () {
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (n)-[depth:PARENT_OF*]->(dp:Area)-[:PARENT_OF]->(d:Area)",
+			"MATCH (n)-[depth:PARENT_OF*]->(dp:Area)",
+			"OPTIONAL MATCH (dp)-[:PARENT_OF]->(d:Area)",
 			"RETURN d, depth, dp"
 		],
 		{"area_id" : this.area_id},
@@ -143,17 +144,25 @@ Area.prototype.descendents = function () {
 			
 			descendents.forEach(function (d) {
 				var depth = d.depth.length;
-			
-				if (depth == 1 && tree_dict[area.area_id].indexOf(d.dp.id) == -1) {
-					tree_dict[area.area_id].push(d.dp.id);
-					area_dict[d.dp.id] = new Area(area.directory, d.dp.id, d.dp.data);
-				}
+				if (!d.d) {
+					if (depth == 1) {
+						tree_dict[area.area_id].push(d.dp.id);
+						area_dict[d.dp.id] = new Area(area.directory, d.dp.id, d.dp.data);
+					}
+				} else {
+					var depth = d.depth.length;
+				
+					if (depth == 1 && tree_dict[area.area_id].indexOf(d.dp.id) == -1) {
+						tree_dict[area.area_id].push(d.dp.id);
+						area_dict[d.dp.id] = new Area(area.directory, d.dp.id, d.dp.data);
+					}
 
-				if (!(d.dp.id in tree_dict)) {
-					tree_dict[d.dp.id] = [];
+					if (!(d.dp.id in tree_dict)) {
+						tree_dict[d.dp.id] = [];
+					}
+					tree_dict[d.dp.id].push(d.d.id);
+					area_dict[d.d.id] = new Area(area.directory, d.d.id, d.d.data);
 				}
-				tree_dict[d.dp.id].push(d.d.id);
-				area_dict[d.d.id] = new Area(area.directory, d.d.id, d.d.data);
 			});
 			var queue = [];
 			var attach_descendents = function (node) {
