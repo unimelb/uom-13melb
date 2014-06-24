@@ -292,8 +292,9 @@ Area.prototype.all_contacts = function () {
 			"START n=node({area_id})",
 			"MATCH (n)<-[:RESPONSIBLE_FOR]-(c:Collection)",
 			"MATCH (contact:Contact)-[:IN_COLLECTION]->(c)",
+			"OPTIONAL MATCH (contact)-[:HAS_URL]->(url:Url)",
 			"OPTIONAL MATCH (c)-[succ:COMES_BEFORE]->(c2:Collection)",
-			"RETURN contact,c,succ,c2"
+			"RETURN contact,url,c,succ,c2"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
@@ -320,7 +321,8 @@ Area.prototype.all_contacts = function () {
 					new Contact(
 						area.directory,
 						result["contact"].id,
-						result["contact"].data
+						result["contact"].data,
+						result["url"] ? result["url"].data : null
 					)
 				);
 
@@ -388,15 +390,19 @@ Collection.prototype.contacts = function () {
 		[
 			"START n=node({collection_id})",
 			"MATCH (contact:Contact)-[:IN_COLLECTION]->(n)",
-			"RETURN contact",
+			"OPTIONAL MATCH (contact)-[:HAS_URL]->(url:Url)",
+			"RETURN contact, url",
 			"ORDER BY contact.last_name, contact.first_name"
 		],
 		{"collection_id" : this.collection_id},
 		function (results) {
 			return results.map(function (result) {
 				var contact = result["contact"];
+				var url = result["url"];
+				console.log("urL");
+				console.log(url);
 				return new Contact(
-					collection.directory, contact.id, contact.data
+					collection.directory, contact.id, contact.data, url ? url.data : null
 				);
 			});
 		}
@@ -429,30 +435,12 @@ exports.Collection = Collection;
  * Contact
  */
 
-var Contact = function (directory, contact_id, contact_info) {
+var Contact = function (directory, contact_id, contact_info, url) {
 
 	this.directory = directory;
 	this.contact_id = contact_id;
 	this.contact_info = contact_info;
-}
-
-Contact.prototype.refresh = function () {
-	var contact = this;
-	return promise_query(this.directory.server,
-		[
-			"START n=node({contact_id})",
-			"MATCH (n)-[:HAS_URL]->(url:Url)",
-			"RETURN url"
-		],
-		{"contact_id" : this.contact_id},
-		function (results) {
-			if (results.length) {
-				var url = results[0]["url"];
-				contact.url = url.data;
-			}
-			return contact;
-		}
-	);
+	if (url) this.url = url;
 }
 
 /*(Contact.prototype.working_times = function () {
