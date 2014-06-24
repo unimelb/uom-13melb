@@ -217,7 +217,8 @@ Area.prototype.path = function (base_area_id) {
 
 Area.prototype.search = function (search_str) {
 	var area = this;
-	var search_regex = util.format("(%s)", search_str.replace(/ /g, "|"));
+	search_str = search_str.toLowerCase().trim().replace(/ +/g, " ").split(" ");
+	var search_regex = util.format("(%s)", search_str.join("|"));
 	console.log(search_regex);
 
 	return promise_query(this.directory.server,
@@ -230,6 +231,7 @@ Area.prototype.search = function (search_str) {
 		],
 		{"area_id" : this.area_id},
 		function (results) {
+			if (!results) return [];
 			var paths = {};
 			results.forEach(function (result) {
 				var a = result.target;
@@ -257,7 +259,17 @@ Area.prototype.search = function (search_str) {
 			Object.keys(paths).forEach(function (target_id) {
 				result_list.push(paths[target_id].reverse().slice(1));
 			});
-			return result_list;
+			// further filtering
+			var reduced = result_list.filter(function (path) {
+				var pathstr = path.map(function (path_item) {
+					return path_item.name;
+				}).join(" ").toLowerCase();
+				return search_str.every(function (term) {
+					return pathstr.indexOf(term) > -1;
+				});
+			});
+
+			return reduced;
 		}
 	);
 }
