@@ -219,7 +219,6 @@ Area.prototype.search = function (search_str) {
 	var area = this;
 	search_str = search_str.toLowerCase().trim().replace(/ +/g, " ").split(" ");
 	var search_regex = util.format("(%s)", search_str.join("|"));
-	console.log(search_regex);
 
 	return promise_query(this.directory.server,
 		[
@@ -227,7 +226,8 @@ Area.prototype.search = function (search_str) {
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
 			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
 			"AND ((n)-[:PARENT_OF*]->(m:Area) OR (n) = (m))",
-			"RETURN target, link, m"
+			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
+			"RETURN target, link, m, COUNT(a)"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
@@ -235,8 +235,9 @@ Area.prototype.search = function (search_str) {
 			var paths = {};
 			results.forEach(function (result) {
 				var a = result.target;
-				paths[a.id] =[];
+				paths[a.id] = [];
 				paths[a.id][0] = new Area(area.directory, a.id, a.data);
+				paths[a.id][0].descendent_contact_count = result["COUNT(a)"];
 			});
 			results.forEach(function (result) {
 				var distance = result.link.length;
