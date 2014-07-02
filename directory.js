@@ -223,11 +223,12 @@ Area.prototype.search = function (search_str) {
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
+			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
 			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
-			"AND ((n)-[:PARENT_OF*]->(m:Area) OR (n) = (m))",
+			"AND ((n)-[:PARENT_OF*]->(m) OR (n) = (m))",
+			util.format("OR c.position =~ \"(?i).*%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
-			"RETURN target, link, m, COUNT(a)"
+			"RETURN target, link, m, COUNT(a), c"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
@@ -238,6 +239,7 @@ Area.prototype.search = function (search_str) {
 				paths[a.id] = [];
 				paths[a.id][0] = new Area(area.directory, a.id, a.data);
 				paths[a.id][0].descendent_contact_count = result["COUNT(a)"];
+				paths[a.id][0].matched_contact = new Contact(area.directory, result.c.id, result.c.data);
 			});
 			results.forEach(function (result) {
 				var distance = result.link.length;
@@ -262,9 +264,13 @@ Area.prototype.search = function (search_str) {
 			});
 			// further filtering
 			var reduced = result_list.filter(function (path) {
-				var pathstr = path.map(function (path_item) {
+				var position = path[path.length - 1].matched_contact
+					? " " + path[path.length - 1].matched_contact.contact_info.position
+					: "";
+				var pathstr = (path.map(function (path_item) {
 					return path_item.name;
-				}).join(" ").toLowerCase();
+				}).join(" ") + position).toLowerCase();
+				console.log(pathstr);
 				return search_str.every(function (term) {
 					return pathstr.indexOf(term) > -1;
 				});
@@ -479,7 +485,9 @@ var promise_query = function (server, query, params, process_results) {
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
 		if (err) {
+			throw err;
 			deferred.reject(err);
+			return;
 		}
 		var processed_results = process_results(results);
 		deferred.resolve(processed_results);

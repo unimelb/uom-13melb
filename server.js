@@ -50,7 +50,8 @@ app.param("area", function (req, res, next, id) {
 			next();
 		},
 		function (err) {
-			res.send({error: "No area."});
+			console.log(err);
+			res.json({error: "No area."});
 			req.area = null;
 			next();
 		}
@@ -65,7 +66,7 @@ app.get("/area/:area", function (req, res, next) {
 	if (req.area) {
 		send_json(res, req.area);
 	}
-		next();
+	next();
 });
 
 app.get("/area/:area/children", function (req, res, next) {
