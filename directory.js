@@ -225,7 +225,6 @@ Area.prototype.search = function (search_str) {
 			"START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target), (n:Area)-[:PARENT_OF*0..]->(m)",
 			util.format("WHERE target.name =~ \"(?i).*(^| )%s.*\"", search_regex),
-			//"AND  OR (n) = (m))",
 			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
 			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
