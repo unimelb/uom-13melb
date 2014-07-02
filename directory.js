@@ -223,10 +223,16 @@ Area.prototype.search = function (search_str) {
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
+			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
 			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
 			"AND ((n)-[:PARENT_OF*]->(m) OR (n) = (m))",
-			util.format("OR c.position =~ \"(?i).*%s.*\"", search_regex),
+			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
+			util.format("WHERE c.position =~ \"(?i).*%s.*\"", search_regex),
+			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
+			"RETURN target, link, m, COUNT(a), c",
+			"UNION START n=node({area_id})",
+			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
+			util.format("WHERE c.position =~ \"(?i).*%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
 			"RETURN target, link, m, COUNT(a), c"
 		],
@@ -239,7 +245,9 @@ Area.prototype.search = function (search_str) {
 				paths[a.id] = [];
 				paths[a.id][0] = new Area(area.directory, a.id, a.data);
 				paths[a.id][0].descendent_contact_count = result["COUNT(a)"];
-				paths[a.id][0].matched_contact = new Contact(area.directory, result.c.id, result.c.data);
+				if (result.c) {
+					paths[a.id][0].matched_contact = new Contact(area.directory, result.c.id, result.c.data);
+				}
 			});
 			results.forEach(function (result) {
 				var distance = result.link.length;
