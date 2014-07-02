@@ -223,9 +223,9 @@ Area.prototype.search = function (search_str) {
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
+			"MATCH (m:Area)-[link:PARENT_OF*]->(target), (n:Area)-[:PARENT_OF*0..]->(m)",
 			util.format("WHERE target.name =~ \"(?i).*(^| )%s.*\"", search_regex),
-			"AND ((n)-[:PARENT_OF*]->(m) OR (n) = (m))",
+			//"AND  OR (n) = (m))",
 			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
 			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
