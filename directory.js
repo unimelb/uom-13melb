@@ -224,15 +224,15 @@ Area.prototype.search = function (search_str) {
 		[
 			"START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)",
-			util.format("WHERE target.name =~ \"(?i).*%s.*\"", search_regex),
+			util.format("WHERE target.name =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"AND ((n)-[:PARENT_OF*]->(m) OR (n) = (m))",
 			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
-			util.format("WHERE c.position =~ \"(?i).*%s.*\"", search_regex),
+			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
 			"RETURN target, link, m, COUNT(a), c",
 			"UNION START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
-			util.format("WHERE c.position =~ \"(?i).*%s.*\"", search_regex),
+			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
 			"RETURN target, link, m, COUNT(a), c"
 		],
