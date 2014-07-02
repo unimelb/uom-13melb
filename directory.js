@@ -240,6 +240,7 @@ Area.prototype.search = function (search_str) {
 		function (results) {
 			if (!results) return [];
 			var paths = {};
+			var to_delete = [];
 			results.forEach(function (result) {
 				var a = result.target;
 				paths[a.id] = [];
@@ -253,19 +254,28 @@ Area.prototype.search = function (search_str) {
 				var distance = result.link.length;
 				var target = result.target;
 				var m = result.m;
+				var matched_contact = null;
 
 				// delete if part of path
+				// but retain matched contact information
 				if (m.id in paths) {
-					console.log(m.id);
-					delete paths[m.id];
+					matched_contact = paths[m.id][0].matched_contact || null;
+					to_delete.push(m.id);
 				}
 
 				if (target.id in paths) {
 					paths[target.id][distance] = new Area(
 						area.directory, m.id, m.data
 					);
+					if (matched_contact) {
+						paths[target.id][distance].matched_contact = matched_contact;
+					}
 				}
 			});
+			to_delete.forEach(function (key) {
+				delete paths[key];
+			});
+
 			var result_list = [];
 			Object.keys(paths).forEach(function (target_id) {
 				result_list.push(paths[target_id].reverse().slice(1));
@@ -276,9 +286,13 @@ Area.prototype.search = function (search_str) {
 					? " " + path[path.length - 1].matched_contact.contact_info.position
 					: "";
 				var pathstr = (path.map(function (path_item) {
-					return path_item.name;
+					return path_item.name + (path_item.matched_contact
+						? " " + path_item.matched_contact.contact_info.position
+						: ""
+					);
 				}).join(" ") + position).toLowerCase();
 				console.log(pathstr);
+				console.log(search_str);
 				return search_str.every(function (term) {
 					return pathstr.indexOf(term) > -1;
 				});
