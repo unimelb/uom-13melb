@@ -6,6 +6,16 @@ var util = require("util");
 
 //var server = new neo4j.GraphDatabase("http://localhost:7474");
 
+/*var create_class = function (methods) {
+	var prototype = "__init__" in methods ? methods.__init__ : function () { };
+	Object.keys(methods).forEach(function (method) {
+		if (method != "__init__") {
+			prototype.prototype[method] = methods[method];
+		}
+	});
+	return prototype;
+}*/
+
 /**
  * Directory
  */
@@ -26,7 +36,9 @@ Directory.prototype.root_area = function () {
 		{},
 		function (results) {
 			var node = results[0]["root"]; // should only be one result
-			return new Area(dir, node.id, node.data);
+			var area = new Area(dir, node.id, node.data);
+			area.is_root = true;
+			return area;
 		}
 	);
 }
@@ -385,8 +397,6 @@ Area.prototype.all_contacts = function () {
 }
 
 Area.prototype.descendent_contact_count = function () {
-	var area = this;
-
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
@@ -410,6 +420,68 @@ Area.prototype.get_name = function () {
 
 Area.prototype.get_notes = function () {
 	return this.notes;
+}
+
+Area.prototype.new_child = function (name, note) {
+	return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"CREATE (new_area:Area {name: {name}, note: {note}}),",
+			"(n)-[:PARENT_OF]->(new_area)",
+			"RETURN (new_area)"
+		],
+		{
+			area_id : this.area_id,
+			name : name, note : note
+		},
+		function (results) {
+			var area = results[0].new_area;
+			return new Area(this.directory, area.id, area.data);
+		}.bind(this)
+	);
+}
+
+// removes the area AND ALL DESCENDENTS. Cannot be done on root.
+// returns parent
+// TODO: get to work
+Area.prototype.remove = function () {
+	if (this.is_root) return q({error : "cannot delete root"});
+	else return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (parent:Area)-[child_link:PARENT_OF]->(n)-[desc_link:PARENT_OF*0..]->(m:Area)",
+			"OPTIONAL MATCH (m)<-[coll_link:RESPONSIBLE_FOR]-(coll:Collection)",
+			"OPTIONAL MATCH (coll)<-[contact_link:IN_COLLECTION]-(c:Contact)",
+			"FOREACH (l IN desc_link | DELETE l)",
+			"DELETE m,child_link,coll_link,coll,contact_link,c",
+			"RETURN parent"
+		],
+		{area_id : this.area_id},
+		function (results) {
+			var area = results[0].parent;
+			return new Area(this.directory, area.id, area.data);
+		}.bind(this)
+
+	);
+}
+
+Area.prototype.update = function (new_data) {
+	var set_clause = util.format("SET %s", Object.keys(new_data).map(function (key) {
+		this[key] = new_data[key];
+		return util.format("n.%s = {%s}", key, key);
+	}.bind(this)).join(","));
+	new_data.area_id = this.area_id;
+	return promise_query(
+		[
+			"START n=node({area_id})",
+			set_clause,
+			"RETURN area"
+		],
+		new_data,
+		function (results) {
+			return this;
+		}.bind(this)
+	);
 }
 
 exports.Area = Area;
