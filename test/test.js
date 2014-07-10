@@ -309,8 +309,109 @@ describe("Directory System", function () {
 						done();
 					})
 				}
-			)
-		})
+			);
+		});
+
+		describe("#new_child()", function () {
+			it("should create a child in the right place", function (done) {
+				directory.root_area().then(function (root) {
+					return root.new_child("TEST AREA");
+				}).then(function (area) {
+					expect(area.name).to.equal("TEST AREA");
+					return area.remove();
+				}).then(function (parent) {
+					done();
+				});
+			});
+		});
+
+		describe("#update()", function () {
+			it("should update the area with the correct information",
+				function (done) {
+					var name = "BLAH BLAH";
+					var note = "THIS IS A NOTE";
+					var area_id;
+					directory.root_area().then(function (root) {
+						return root.new_child("TEST AREA");
+					}).then(function (area) {
+						area_id = area.area_id;
+						return area.update({name: name, note: note});
+					}).then(function (area) {
+						//console.log(area_id);
+						return directory.area(area_id);
+					}).then(function (area) {
+						//console.log([area.name, area.note]);
+						expect(area.name).to.equal(name);
+						expect(area.note).to.equal(note);
+						return area.remove();
+					}).then(function () {
+						done();
+					});
+				}
+			);
+		});
+
+		describe("#change_parent()", function () {
+			it("should change to the supplied parent", function (done) {
+				var root, moved_area, new_parent;
+				directory.root_area().then(function (root_area) {
+					root = root_area;
+					return root.children();
+				}).then(function (children) {
+					new_parent = children[0];
+					return children[1].change_parent(new_parent);
+				}).then(function (area) {
+					moved_area = area;
+					return area.parent();
+				}).then(function (parent) {
+					expect(parent.area_id).to.equal(new_parent.area_id);
+					return moved_area.change_parent(root);
+				}).then(function (parent) {
+					done();
+				});
+			});
+		});
+
+		describe("#detach()", function () {
+			it("should seperate the area from its parent", function (done) {
+				var root, child;
+				directory.root_area().then(function (root_area) {
+					root = root_area;
+					return root.children();
+				}).then(function (children) {
+					child = children.pop();
+					return child.detach();
+				}).then(function (former_parent) {
+					expect(former_parent.area_id).to.equal(root.area_id);
+					return child.parent();
+				}).then(function (parent) {
+					expect(parent).to.be.null;
+					return child.change_parent(root);
+				}).then(function (parent) {
+					done();
+				});
+			});
+		});
+
+		describe("#remove()", function () {
+			it("should delete the area and all children", function (done) {
+				var name = "T" + Math.random();
+				var root;
+				directory.root_area().then(function (root_area) {
+					root = root_area;
+					return root.new_child(name);
+				}).then(function (area) {
+					return area.remove();
+				}).then(function (parent) {
+					return root.children();
+				}).then(function (children) {
+					expect(
+						children.map(function (child) { return child.name; })
+					).to.not.contain(name);
+					done();
+				});
+			});
+		});
 	});
 
 	describe("Collection", function () {
@@ -426,8 +527,7 @@ describe("Directory System", function () {
 			return target_contacts.some(
 				function (target_contact) {
 					return (
-						contact
-						== target_contact
+						contact == target_contact
 					);
 				}
 			)

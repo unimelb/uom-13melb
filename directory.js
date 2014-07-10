@@ -30,7 +30,8 @@ Directory.prototype.root_area = function () {
 	return promise_query(this.server,
 		[
 			"MATCH (root:Area)",
-			"WHERE NOT ()-[:PARENT_OF]->(root)",
+			//"WHERE NOT ()-[:PARENT_OF]->(root)",
+			"WHERE root.is_root = true",
 			"RETURN root"
 		],
 		{},
@@ -57,6 +58,23 @@ Directory.prototype.area = function (area_id) {
 		return;
 	});
 	return deferred.promise;
+}
+
+Directory.orphan_areas = function () {
+	return promise_query(
+		[
+			"MATCH (orphan:Area)",
+			"WHERE root.is_root = false AND NOT ()-[:PARENT_OF]->(orphan)",
+			"RETURN orphan"
+		],
+		{},
+		function (results) {
+			return results.map(function (result) {
+				var area = result.orphan;
+				return new Area(this.directory, area.id, area.data);
+			}.bind(this));
+		}.bind(this)
+	);
 }
 
 exports.Directory = Directory;
@@ -423,17 +441,21 @@ Area.prototype.get_notes = function () {
 }
 
 Area.prototype.new_child = function (name, note) {
+	var params = {
+		area_id : this.area_id,
+		name : name
+	};
+	if (note) params.note = note;
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"CREATE (new_area:Area {name: {name}, note: {note}}),",
+			"CREATE (new_area:Area {name: {name}",
+			note ? ", note: {note}" : "",
+			"}),",
 			"(n)-[:PARENT_OF]->(new_area)",
 			"RETURN (new_area)"
 		],
-		{
-			area_id : this.area_id,
-			name : name, note : note
-		},
+		params,
 		function (results) {
 			var area = results[0].new_area;
 			return new Area(this.directory, area.id, area.data);
@@ -441,9 +463,30 @@ Area.prototype.new_child = function (name, note) {
 	);
 }
 
+// attempts to detach an area from its parent, returning the parent.
+// if the node is already detached / is root, returns null
+Area.prototype.detach = function () {
+	if (this.is_root) return q({error : "cannot delete root"});
+	else return promise_query(this.directory.server,
+		[
+			"START n=node({area_id})",
+			"MATCH (parent:Area)-[area_area:PARENT_OF]->(n)",
+			"DELETE area_area",
+			"RETURN parent"
+		],
+		{area_id : this.area_id},
+		function (results) {
+			if (results.length) {
+				var area = results[0].parent;
+				return new Area(this.directory, area.id, area.data);
+			} else return null;
+		}.bind(this)
+
+	);
+}
+
 // removes the area AND ALL DESCENDENTS. Cannot be done on root.
 // returns parent
-// TODO: get to work
 Area.prototype.remove = function () {
 	if (this.is_root) return q({error : "cannot delete root"});
 	else return promise_query(this.directory.server,
@@ -451,9 +494,13 @@ Area.prototype.remove = function () {
 			"START n=node({area_id})",
 			"MATCH (parent:Area)-[child_link:PARENT_OF]->(n)-[desc_link:PARENT_OF*0..]->(m:Area)",
 			"OPTIONAL MATCH (m)<-[coll_link:RESPONSIBLE_FOR]-(coll:Collection)",
+			"OPTIONAL MATCH (coll)-[coll_coll:COMES_BEFORE]->(:Collection)",
 			"OPTIONAL MATCH (coll)<-[contact_link:IN_COLLECTION]-(c:Contact)",
+			"OPTIONAL MATCH (c)-[url_link:HAS_URL]->(url:Url)",
+			"OPTIONAL MATCH (c)-[day_link:ONLY_WORKS]->(day:Day)",
 			"FOREACH (l IN desc_link | DELETE l)",
-			"DELETE m,child_link,coll_link,coll,contact_link,c",
+			"DELETE child_link, coll_link, contact_link, url_link, day_link, coll_coll",
+			"DELETE m, coll",
 			"RETURN parent"
 		],
 		{area_id : this.area_id},
@@ -471,17 +518,33 @@ Area.prototype.update = function (new_data) {
 		return util.format("n.%s = {%s}", key, key);
 	}.bind(this)).join(","));
 	new_data.area_id = this.area_id;
-	return promise_query(
+	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
 			set_clause,
-			"RETURN area"
+			"RETURN n"
 		],
 		new_data,
 		function (results) {
 			return this;
 		}.bind(this)
 	);
+}
+
+Area.prototype.change_parent = function (new_parent) {
+	return this.detach().then(function () {
+		return promise_query(this.directory.server,
+			[
+				"START n=node({area_id}), parent=node({parent_id})",
+				"CREATE (parent)-[:PARENT_OF]->(n)",
+				"RETURN n"
+			],
+			{area_id : this.area_id, parent_id : new_parent.area_id},
+			function (results) {
+				return this;
+			}.bind(this)
+		);
+	}.bind(this));
 }
 
 exports.Area = Area;
@@ -511,8 +574,6 @@ Collection.prototype.contacts = function () {
 			return results.map(function (result) {
 				var contact = result["contact"];
 				var url = result["url"];
-				console.log("urL");
-				console.log(url);
 				return new Contact(
 					collection.directory, contact.id, contact.data, url ? url.data : null
 				);
@@ -574,10 +635,12 @@ exports.Contact = Contact;
  */
 
 var promise_query = function (server, query, params, process_results) {
+	//console.log(query);
 	var query_str = query.join(" ");
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
 		if (err) {
+			console.log(err);
 			throw err;
 			deferred.reject(err);
 			return;
