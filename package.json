@@ -9,7 +9,8 @@
     "express": "~3.3.4",
     "neo4j": "~1.0",
     "q": "~1.0",
-    "airbrake": "latest"
+    "airbrake": "latest",
+    "body-parser": "latest"
   },
   "devDependencies": {
     "grunt": "~0.4.1",

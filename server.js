@@ -3,18 +3,23 @@ var express = require("express");
 var neo4j = require("neo4j");
 var http = require("http");
 var airbrake = require("airbrake");
+var bodyParser = require("body-parser");
 
 var app = express();
+
+var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
+app.use(bodyParser.urlencoded({
+	extended : true
+}));
+app.use(airbrake.expressHandler());
 
 app.all('*', function(req, res, next) {
 	res.header("Access-Control-Allow-Origin", "*");
 	res.header("Access-Control-Allow-Headers", "X-Requested-With");
+	res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
 	res.header("Content-Type", "application/json");
 	next();
 });
-
-var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
-app.use(airbrake.expressHandler());
 
 var server = new neo4j.GraphDatabase(process.env.GRAPHENEDB_URL);
 
@@ -35,6 +40,10 @@ var send_json = function (res, object) {
 	}
 	recursive_delete(object, "directory");
 	res.json(object);
+}
+
+var send_error = function (res, text) {
+	send_json(res, {error: text});
 }
 
 app.param("area", function (req, res, next, id) {
@@ -67,6 +76,48 @@ app.get("/area/:area", function (req, res, next) {
 		send_json(res, req.area);
 	}
 	next();
+});
+
+// insert
+app.post("/area/:area", function (req, res, next) {
+	if (req.area) {
+		req.area.new_child(req.body).then(function (area) {
+			if (area) {
+				send_json(res, area);
+			} else send_error(res, "Area could not be created.")
+			next();
+		});
+	}
+});
+
+// update
+app.put("/area/:area", function (req, res, next) {
+	if (req.area) {
+		req.area.update(req.body).then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	}
+});
+
+// change parent
+app.put("/area/:area/parent", function (req, res, next) {
+	if (req.area) {
+		req.area.change_parent(req.body).then(function (area) {
+			send_json(res, area);
+			next();
+		});
+	}
+});
+
+// delete
+app.delete("/area/:area", function (req, res, next) {
+	if (req.area) {
+		req.area.detach().then(function (parent) {
+			send_json(res, parent);
+			next();
+		});
+	}
 });
 
 app.get("/area/:area/children", function (req, res, next) {

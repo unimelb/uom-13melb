@@ -440,17 +440,21 @@ Area.prototype.get_notes = function () {
 	return this.notes;
 }
 
-Area.prototype.new_child = function (name, note) {
+Area.prototype.new_child = function (data) {
+	console.log(data);
+	if (typeof(data) == "string") data = {name: data};
+	if (!("name" in data) || !data.name.length) return q(null);
+
 	var params = {
 		area_id : this.area_id,
-		name : name
+		name : data.name
 	};
-	if (note) params.note = note;
+	if (data.note) params.note = data.note;
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
 			"CREATE (new_area:Area {name: {name}",
-			note ? ", note: {note}" : "",
+			data.note ? ", note: {note}" : "",
 			"}),",
 			"(n)-[:PARENT_OF]->(new_area)",
 			"RETURN (new_area)"
@@ -513,7 +517,8 @@ Area.prototype.remove = function () {
 }
 
 Area.prototype.update = function (new_data) {
-	var set_clause = util.format("SET %s", Object.keys(new_data).map(function (key) {
+	var keys = intersect(["name", "note"], Object.keys(new_data));
+	var set_clause = util.format("SET %s", keys.map(function (key) {
 		this[key] = new_data[key];
 		return util.format("n.%s = {%s}", key, key);
 	}.bind(this)).join(","));
@@ -539,7 +544,7 @@ Area.prototype.change_parent = function (new_parent) {
 				"CREATE (parent)-[:PARENT_OF]->(n)",
 				"RETURN n"
 			],
-			{area_id : this.area_id, parent_id : new_parent.area_id},
+			{area_id : this.area_id, parent_id : parseInt(new_parent.area_id)},
 			function (results) {
 				return this;
 			}.bind(this)
@@ -633,6 +638,10 @@ exports.Contact = Contact;
 /**
  * Patterns
  */
+
+var intersect = function (a, b) {
+	return a.filter(function (x) { return b.indexOf(x) > -1; });
+}
 
 var promise_query = function (server, query, params, process_results) {
 	//console.log(query);
