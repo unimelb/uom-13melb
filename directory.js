@@ -223,9 +223,9 @@ Area.prototype.path = function (base_area_id) {
 		[
 			"START n=node({area_id})",
 			base_area_id ? ", base=node({base_area})" : "",
-			"MATCH (m:Area)-[link:PARENT_OF*]->(n)",
+			"MATCH (m:Area)-[link:PARENT_OF*0..]->(n)",
 			base_area_id
-				? "WHERE (base)-[:PARENT_OF*]->(m) OR (base) = (m)"
+				? "WHERE (base)-[:PARENT_OF*0..]->(m)"
 				: ""
 			,
 			"RETURN link, m, n"
@@ -240,7 +240,7 @@ Area.prototype.path = function (base_area_id) {
 					path[pos] = new Area(area.directory, result.m.id, result.m.data);
 				});
 			}
-			return path.reverse().slice(1);
+			return path.reverse()//.slice(1);
 		}
 	);
 }
