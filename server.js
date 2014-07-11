@@ -4,6 +4,7 @@ var neo4j = require("neo4j");
 var http = require("http");
 var airbrake = require("airbrake");
 var bodyParser = require("body-parser");
+var q = require("q");
 
 var app = express();
 
@@ -65,6 +66,13 @@ app.param("area", function (req, res, next, id) {
 			next();
 		}
 	);
+});
+
+app.param("collection", function (req, res, next, id) {
+	dir.collection(id).then(function (collection) {
+		req.collection = collection;
+		next();
+	});
 });
 
 app.get("/", function (req, res, next) {
@@ -183,6 +191,43 @@ app.get("/area/:area/descendent_contact_count", function (req, res, next) {
 		});
 	} else next();
 });
+
+app.get("/area/:area/collections", function (req, res, next) {
+	if (req.area) {
+		req.area.collections().then(function (result) {
+			send_json(res, result);
+			next();
+		});
+	} else next();
+});
+
+/**
+ * Collection routes.
+ */
+
+app.get("/collection/:collection", function (req, res, next) {
+	q.spread([
+		req.collection.contacts(),
+		req.collection.successors()
+	], function (contacts, successors) {
+		send_json(res, {
+			collection_id : req.collection.collection_id,
+			contacts : contacts,
+			successors : successors
+		});
+		next();
+	});
+});
+
+// create new contact / add existing contact to collection
+app.post("/collection/:collection")
+
+// place a collection as a successor to this collection
+app.put("/collection/:collection")
+
+// remove contacts from collection, creating a new collection for them
+// returns the new collection
+app.delete("/collecton/:collection")
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));

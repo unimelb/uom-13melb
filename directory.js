@@ -77,6 +77,10 @@ Directory.orphan_areas = function () {
 	);
 }
 
+Directory.prototype.collection = function (collection_id) {
+	return q(new Collection(this, parseInt(collection_id)));
+}
+
 exports.Directory = Directory;
 
 /**
@@ -344,6 +348,7 @@ Area.prototype.collections = function () {
 		],
 		{"area_id" : this.area_id},
 		function (results) {
+			console.log(results);
 			return results.map(function (result) {
 				var collection = result["collection"];
 				return new Collection(
@@ -376,6 +381,7 @@ Area.prototype.all_contacts = function () {
 				var coll_id = result["c"].id;
 				if (!(coll_id in all_contacts)) {
 					all_contacts[coll_id] = {
+						collection_id : coll_id,
 						contacts : [],
 						successors : []
 					};
@@ -607,6 +613,106 @@ Collection.prototype.successors = function () {
 	);
 }
 
+// separate some contacts into a new collection, returning the new one
+Collection.prototype.split = function (contacts) {
+	var contact_list = "[" + contacts.map(function (contact) {
+		return contact instanceof Object ? contact.contact_id : contact;
+	}).join(",") + "]";
+	return promise_query(this.directory.server,
+		[
+			"START old_collection=node({old_collection_id})",
+			"MATCH (area:Area)<-[:RESPONSIBLE_FOR]-(old_collection)",
+			"MATCH (old_collection)<-[old_connection:IN_COLLECTION]-(target:Contact)",
+			"WHERE id(target) IN " + contact_list,
+			"DELETE old_connection",
+			"RETURN area, target"
+		],
+		{
+			old_collection_id : this.collection_id
+		},
+		function (results) {
+			return {
+				area : results[0].area,
+				targets : results.map(function (result) { return result.target; })
+			};
+		}.bind(this)
+	).then(function (results) {
+		var starts = [];
+		var creates = [];
+		var new_connections = results.targets.forEach(function (target) {
+			var id = target.id;
+			starts.push("t" + id + "=node(" + id + ")");
+			creates.push("(new_collection)<-[:IN_COLLECTION]-(t" + id + ")");
+		});
+		return promise_query(this.directory.server,
+			[
+				"START area=node(" + results.area.id + "), " + starts.join(","),
+				"CREATE (new_collection:Collection), (area)<-[:RESPONSIBLE_FOR]-(new_collection),",
+				creates.join(","),
+				"RETURN new_collection"
+			],
+			{},
+			function (results) {
+				return new Collection(this.directory, results[0].new_collection.id);
+			}.bind(this)
+		)
+	}.bind(this));
+}
+
+// merges a collection into this one
+Collection.prototype.merge = function (collection) {
+	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	return promise_query(this.directory.server,
+		[
+			"START old_collection=node({old_collection_id})",
+			"MATCH (area:Area)<-[:RESPONSIBLE_FOR]-(old_collection)",
+			"OPTIONAL MATCH (old_collection)<-[old_connection:IN_COLLECTION]-(target:Contact)",
+			"DELETE old_connection, old_collection",
+			"RETURN target"
+		],
+		{
+			old_collection_id : collection_id
+		},
+		function (results) {
+			return {
+				targets : results.map(function (result) { return result.target; })
+			};
+		}.bind(this)
+	).then(function (results) {
+		if (results.targets.length) {
+			var starts = [];
+			var creates = [];
+			var new_connections = results.targets.forEach(function (target) {
+				var id = target.id;
+				starts.push("t" + id + "=node(" + id + ")");
+				creates.push("(new_collection)<-[:IN_COLLECTION]-(t" + id + ")");
+			});
+			return promise_query(this.directory.server,
+				[
+					"START new_collection=node(" + this.collection_id + "), " + starts.join(","),
+					"CREATE " + creates.join(","),
+					"RETURN new_collection"
+				],
+				{},
+				function (results) {
+					return this;
+				}.bind(this)
+			);
+		} else return q(this);
+	}.bind(this));
+}
+
+// make a collection as a successor to another
+Collection.prototype.add_successor = function (collection) {
+
+}
+
+// joins a contact (existing/new) to a collection
+// existing if ID provided, new if info provided
+Collection.prototype.new_contact = function (contact_info) {
+
+}
+
 exports.Collection = Collection;
 
 /**
@@ -644,7 +750,7 @@ var intersect = function (a, b) {
 }
 
 var promise_query = function (server, query, params, process_results) {
-	//console.log(query);
+	console.log(query);
 	var query_str = query.join(" ");
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
