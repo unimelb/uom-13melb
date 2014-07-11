@@ -141,7 +141,7 @@ Area.prototype.children = function () {
 		[
 			"START n=node({area_id})",
 			"MATCH (n)-[:PARENT_OF]->(child:Area)",
-			"RETURN child"
+			"RETURN child ORDER BY child.name"
 		],
 		{"area_id" : this.area_id},
 		function (child_nodes) {
