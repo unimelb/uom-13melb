@@ -324,8 +324,8 @@ Area.prototype.search = function (search_str) {
 						: ""
 					);
 				}).join(" ") + position).toLowerCase();
-				console.log(pathstr);
-				console.log(search_str);
+				//console.log(pathstr);
+				//console.log(search_str);
 				return search_str.every(function (term) {
 					return pathstr.indexOf(term) > -1;
 				});
@@ -348,7 +348,7 @@ Area.prototype.collections = function () {
 		],
 		{"area_id" : this.area_id},
 		function (results) {
-			console.log(results);
+			//console.log(results);
 			return results.map(function (result) {
 				var collection = result["collection"];
 				return new Collection(
@@ -447,7 +447,7 @@ Area.prototype.get_notes = function () {
 }
 
 Area.prototype.new_child = function (data) {
-	console.log(data);
+	//console.log(data);
 	if (typeof(data) == "string") data = {name: data};
 	if (!("name" in data) || !data.name.length) return q(null);
 
@@ -665,9 +665,10 @@ Collection.prototype.merge = function (collection) {
 	return promise_query(this.directory.server,
 		[
 			"START old_collection=node({old_collection_id})",
-			"MATCH (area:Area)<-[:RESPONSIBLE_FOR]-(old_collection)",
+			"MATCH (area:Area)<-[resp_link:RESPONSIBLE_FOR]-(old_collection)",
 			"OPTIONAL MATCH (old_collection)<-[old_connection:IN_COLLECTION]-(target:Contact)",
-			"DELETE old_connection, old_collection",
+			"OPTIONAL MATCH (old_collection)-[succ_link:COMES_BEFORE]->(:Collection)",
+			"DELETE old_connection, resp_link, succ_link, old_collection",
 			"RETURN target"
 		],
 		{
@@ -703,8 +704,42 @@ Collection.prototype.merge = function (collection) {
 }
 
 // make a collection as a successor to another
-Collection.prototype.add_successor = function (collection) {
+Collection.prototype.add_successor = function (collection, note) {
+	if (!note) note = "";
+	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	console.log([this.collection_id, collection_id]);
+	return promise_query(this.directory.server,
+		[
+			"START pred=node({pred_id}), succ=node({succ_id})",
+			"CREATE (pred)-[:COMES_BEFORE {note: {note}}]->(succ)",
+			"RETURN pred"
+		], {
+			pred_id : this.collection_id,
+			succ_id : collection_id,
+			note : note
+		},
+		function (results) {
+			return this;
+		}.bind(this)
+	);
+}
 
+Collection.prototype.remove_successor = function (collection) {
+	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	return promise_query(this.directory.server,
+		[
+			"START pred=node({pred_id}), succ=node({succ_id})",
+			"MATCH (pred)-[link:COMES_BEFORE]->(succ)",
+			"DELETE link",
+			"RETURN pred"
+		], {
+			pred_id : this.collection_id,
+			succ_id : collection_id
+		},
+		function (results) {
+			return this;
+		}.bind(this)
+	);
 }
 
 // joins a contact (existing/new) to a collection
@@ -750,7 +785,7 @@ var intersect = function (a, b) {
 }
 
 var promise_query = function (server, query, params, process_results) {
-	console.log(query);
+	//console.log(query);
 	var query_str = query.join(" ");
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {

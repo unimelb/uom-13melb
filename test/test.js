@@ -205,7 +205,7 @@ describe("Directory System", function () {
 						.then(function (area) {
 							return area.path();
 						}).then(function (path_to_area) {
-							expect(path_to_area.every(
+							expect(path_to_area.slice(1).every(
 								function (node, index) {
 									return (
 										node.name == path[index] ||
@@ -506,6 +506,154 @@ describe("Directory System", function () {
 						done();
 					});
 			});
+		});
+		describe("#split()", function () {
+			it("should move the target contacts to a new collection",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"General enquiries"
+					];
+
+					var collection;
+					var new_collection;
+					var contact;
+					var remainder;
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						collection = collections[0];
+						return collection.contacts();
+					}).then(function (contacts) {
+						contact = contacts[0];
+						remainder = contacts.slice(1);
+						return collection.split([contact]);
+					}).then(function (new_coll) {
+						new_collection = new_coll;
+						return new_collection.contacts();
+					}).then(function (new_contacts) {
+						expect(new_contacts[0].contact_id)
+							.to.equal(contact.contact_id);
+						return collection.merge(new_collection);
+					}).then(function () {
+						done();
+					})
+				}
+			)
+		});
+
+		describe("#merge()", function () {
+			it("should move the contacts back to the collection",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"General enquiries"
+					];
+
+					var collection;
+					var old_contacts;
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						collection = collections[0];
+						return collection.contacts();
+					}).then(function (contacts) {
+						old_contacts = contacts.map(function (contact) {
+							return contact.contact_id;
+						});
+						return collection.split([contacts[0]]);
+					}).then(function (new_coll) {
+						return collection.merge(new_coll);
+					}).then(function (old_collection) {
+						return old_collection.contacts();
+					}).then(function (contacts) {
+						expect(contacts.every(function (contact) {
+							return (
+								old_contacts.indexOf(contact.contact_id) > -1
+							);
+						})).to.be.true;
+						done();
+					})
+				}
+			)
+		});
+
+		describe("#add_successor()", function () {
+			it("should add the given collection as a successor",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"Housing"
+					];
+
+					var pred, succ;
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path)
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						pred = collections[0];
+						succ = collections[1];
+						return pred.add_successor(succ);
+					}).then(function (collection) {
+						return pred.successors();
+					}).then(function (successors) {
+						expect(successors.map(function (successor) {
+							return successor.collection_id;
+						})).to.contain(succ.collection_id);
+						return pred.remove_successor(succ);
+					}).then(function () {
+						done();
+					});
+				}
+			);
+		});
+
+		describe("#remove_successor()", function () {
+			it("should add the given collection as a successor",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"Housing"
+					];
+
+					var pred, succ;
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path)
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						pred = collections[0];
+						succ = collections[1];
+						return pred.add_successor(succ);
+					}).then(function (successors) {
+						return pred.remove_successor(succ);
+					}).then(function () {
+						return pred.successors();
+					}).then(function (successors) {
+						expect(successors.map(function (successor) {
+							return successor.collection_id;
+						})).to.not.contain(succ.collection_id);
+						done();
+					});
+				}
+			);
 		});
 	});
 

@@ -219,15 +219,49 @@ app.get("/collection/:collection", function (req, res, next) {
 	});
 });
 
-// create new contact / add existing contact to collection
-app.post("/collection/:collection")
+// merges :collection INTO GIVEN COLLECTION
+// :collection IS DELETED, given collection remains
+app.delete("/collection/:collection", function (req, res, next) {
+	if (req.body.collection_id) {
+		dir.collection(req.body.collection_id).then(function (collection) {
+			return collection.merge(req.collection);
+		}).then(function (collection) {
+			send_json(res, collection);
+			next();
+		});
+	} else next();
+});
 
-// place a collection as a successor to this collection
-app.put("/collection/:collection")
+app.get("/collection/:collection/contacts", function (req, res, next) {
+	req.collection.contacts().then(function (contacts) {
+		send_json(res, contacts);
+		next();
+	});
+});
+
+// create new contact / add existing contact to collection
+app.post("/collection/:collection/contacts")
 
 // remove contacts from collection, creating a new collection for them
 // returns the new collection
-app.delete("/collecton/:collection")
+app.delete("/collection/:collection/contacts", function (req, res, next) {
+	req.collection.split(req.body.contacts).then(function (collection) {
+		send_json(res, collection);
+		next();
+	})
+})
+
+app.get("/collection/:collection/successors", function (req, res, next) {
+	req.collection.successors().then(function (successors) {
+		send_json(res, successors);
+		next();
+	});
+})
+// place a collection as a successor to this collection
+app.put("/collection/:collection/successors")
+
+// removes successor collection
+app.delete("/collection/:collection/successors")
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));
