@@ -707,7 +707,7 @@ Collection.prototype.merge = function (collection) {
 
 // make a collection as a successor to another
 Collection.prototype.add_successor = function (collection, note) {
-	if (!note) note = "";
+	if (!note) note = collection.note || "";
 	var collection_id = parseInt(
 		collection instanceof Object ? collection.collection_id : collection
 	);
