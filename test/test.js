@@ -412,6 +412,41 @@ describe("Directory System", function () {
 				});
 			});
 		});
+
+		describe("#new_collection()", function () {
+			it("should create a new collection", function (done) {
+				var path = [
+					"BSB Student Services",
+					"Student Support Contact List",
+					"Student Support Services",
+					"General enquiries"
+				];
+
+				var new_collection;
+				var to_merge;
+				var target_area;
+				directory.root_area().then(function (area) {
+					return area.descend_along_path(path);
+				}).then(function (area) {
+					target_area = area;
+					return area.new_collection();
+				}).then(function (collection) {
+					new_collection = collection;
+					return target_area.collections();
+				}).then(function (collections) {
+					to_merge = collections[0].collection_id == new_collection.collection_id
+						? collections[1]
+						: collections[0]
+					;
+					expect(collections.map(function (collection) {
+						return collection.collection_id;
+					})).to.contain(new_collection.collection_id);
+					return to_merge.merge(new_collection);
+				}).then(function () {
+					done();
+				});
+			});
+		});
 	});
 
 	describe("Collection", function () {

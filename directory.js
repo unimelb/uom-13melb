@@ -558,6 +558,23 @@ Area.prototype.change_parent = function (new_parent) {
 	}.bind(this));
 }
 
+// spawns a collection. from NOWHERE. only use when there are no
+// existing collections.
+Area.prototype.new_collection = function () {
+	return promise_query(this.directory.server,
+		[
+			"START area=node({area_id})",
+			"CREATE (new_collection:Collection),",
+			"(new_collection)-[:RESPONSIBLE_FOR]->(area)",
+			"RETURN new_collection"
+		], {
+			area_id : this.area_id
+		}, function (results) {
+			return new Collection(this.directory, results[0].new_collection.id);
+		}.bind(this)
+	);
+}
+
 exports.Area = Area;
 
 /**
@@ -682,7 +699,7 @@ Collection.prototype.merge = function (collection) {
 			};
 		}.bind(this)
 	).then(function (results) {
-		if (results.targets.length) {
+		if (results.targets.length && results.targets[0] != null) {
 			var starts = [];
 			var creates = [];
 			var new_connections = results.targets.forEach(function (target) {
@@ -751,7 +768,23 @@ Collection.prototype.remove_successor = function (collection) {
 // joins a contact (existing/new) to a collection
 // existing if ID provided, new if info provided
 Collection.prototype.new_contact = function (contact_info) {
-
+	var data_str = Object.keys(contact_info).map(function (key) {
+		return key + ": '" + contact_info[key] + "'";
+	}).join(", ")
+	return promise_query(this.directory.server,
+		[
+			"START n=node({collection_id})",
+			"CREATE (new_contact:Contact {" + data_str + "}),",
+			"(new_contact)-[:IN_COLLECTION]->(n)",
+			"RETURN new_contact"
+		], {
+			collection_id : this.collection_id
+		},
+		function (results) {
+			var contact_id = results[0].new_contact.id;
+			return new Contact(this.directory, contact_id, contact_info);
+		}.bind(this)
+	);
 }
 
 exports.Collection = Collection;
@@ -778,6 +811,26 @@ Contact.prototype.get_contact_id = function () {
 
 Contact.prototype.get_info = function () {
 	return this.contact_info;
+}
+
+Contact.prototype.remove = function () {
+	return promise_query(this.directory,
+		[
+			"START contact=node({contact_id})",
+			"OPTIONAL MATCH (contact)-[coll_link:IN_COLLECTION]->(coll:Collection)",
+			"OPTIONAL MATCH (contact)-[url_link:HAS_URL]->(url:Url)",
+			"OPTIONAL MATCH (contact)-[working_times:ONLY_WORKS]->(:Day)",
+			"DELETE coll_link, url_link, working_times, contact",
+			"RETURN coll"
+		], {
+			contact_id : this.contact_id
+		},
+		function (results) {
+			if (results.length) {
+				return new Collection(this.directory, result[0].coll.id);
+			} else return {"success" : true};
+		}.bind(this)
+	)
 }
 
 exports.Contact = Contact;

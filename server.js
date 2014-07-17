@@ -219,6 +219,12 @@ app.get("/collection/:collection", function (req, res, next) {
 	});
 });
 
+// creates an entirely new collection. Should only be used when
+// there are no existing collections.
+app.post("/collection", function (req, res, next) {
+
+})
+
 // merges :collection INTO GIVEN COLLECTION
 // :collection IS DELETED, given collection remains
 app.delete("/collection/:collection", function (req, res, next) {
