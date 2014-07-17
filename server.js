@@ -248,8 +248,8 @@ app.delete("/collection/:collection/contacts", function (req, res, next) {
 	req.collection.split(req.body.contacts).then(function (collection) {
 		send_json(res, collection);
 		next();
-	})
-})
+	});
+});
 
 app.get("/collection/:collection/successors", function (req, res, next) {
 	req.collection.successors().then(function (successors) {
@@ -258,10 +258,20 @@ app.get("/collection/:collection/successors", function (req, res, next) {
 	});
 })
 // place a collection as a successor to this collection
-app.put("/collection/:collection/successors")
+app.post("/collection/:collection/successors", function (req, res, next) {
+	req.collection.add_successor(req.body).then(function (collection) {
+		send_json(res, collection);
+		next();
+	});
+});
 
 // removes successor collection
-app.delete("/collection/:collection/successors")
+app.delete("/collection/:collection/successors", function (req, res, next) {
+	req.collection.remove_successor(req.body).then(function (collection) {
+		send_json(res, collection);
+		next();
+	});
+});
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));

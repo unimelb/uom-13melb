@@ -661,7 +661,9 @@ Collection.prototype.split = function (contacts) {
 
 // merges a collection into this one
 Collection.prototype.merge = function (collection) {
-	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	var collection_id = parseInt(
+		collection instanceof Object ? collection.collection_id : collection
+	);
 	return promise_query(this.directory.server,
 		[
 			"START old_collection=node({old_collection_id})",
@@ -706,7 +708,9 @@ Collection.prototype.merge = function (collection) {
 // make a collection as a successor to another
 Collection.prototype.add_successor = function (collection, note) {
 	if (!note) note = "";
-	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	var collection_id = parseInt(
+		collection instanceof Object ? collection.collection_id : collection
+	);
 	console.log([this.collection_id, collection_id]);
 	return promise_query(this.directory.server,
 		[
@@ -725,7 +729,9 @@ Collection.prototype.add_successor = function (collection, note) {
 }
 
 Collection.prototype.remove_successor = function (collection) {
-	var collection_id = collection instanceof Object ? collection.collection_id : collection;
+	var collection_id = parseInt(
+		collection instanceof Object ? collection.collection_id : collection
+	);
 	return promise_query(this.directory.server,
 		[
 			"START pred=node({pred_id}), succ=node({succ_id})",
