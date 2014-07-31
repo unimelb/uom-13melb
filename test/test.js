@@ -690,10 +690,83 @@ describe("Directory System", function () {
 				}
 			);
 		});
+
+		describe("#new_contact()", function () {
+			it("should add a new contact if contact info is given",
+				function (done) {
+					var name = Math.random().toString();
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"Housing"
+					];
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						var collection = collections[0];
+						collection.new_contact({
+							"first_name" : name
+						}).then(function (contact) {
+							return directory.contact(
+								contact.contact_id
+							);
+						}).then(function (contact) {
+							expect(contact.contact_info.first_name)
+								.to.equal(name);
+							return contact.remove();
+						}).then(function () {
+							done();
+						})
+					});
+				}
+			);
+
+			it("should join an existing contact if contact_id is given",
+				function (done) {
+					var name = Math.random().toString();
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"Housing"
+					];
+
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.collections();
+					}).then(function (collections) {
+						var collection = collections[0];
+						var alternative = collections[1];
+						var chosen_contact;
+						collection.contacts().then(function (contacts) {
+							chosen_contact = contacts[0];
+							return alternative.new_contact(chosen_contact);
+						}).then(function (collection) {
+							return alternative.contacts();
+						}).then(function (contacts) {
+							expect(contacts.some(function (contact) {
+								return contact.contact_id
+									== chosen_contact.contact_id
+								;
+							})).to.be.true;
+							return chosen_contact.detach(alternative);
+						}).then(function () {
+							done();
+						});
+					});
+				}
+			);
+		});
 	});
 
 	describe("Contact", function () {
 		it("should contain the correct information for a contact");
+
 	});
 });
 

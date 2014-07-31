@@ -75,6 +75,13 @@ app.param("collection", function (req, res, next, id) {
 	});
 });
 
+app.param("contact", function (req, res, next, id) {
+	dir.contact(id).then(function (contact) {
+		req.contact = contact;
+		next();
+	});
+});
+
 app.get("/", function (req, res, next) {
 	res.send("{}");
 });
@@ -221,9 +228,14 @@ app.get("/collection/:collection", function (req, res, next) {
 
 // creates an entirely new collection. Should only be used when
 // there are no existing collections.
-app.post("/collection", function (req, res, next) {
-
-})
+app.post("/area/:area/collections", function (req, res, next) {
+	if (req.area) {
+		req.area.new_collection().then(function (collection) {
+			send_json(res, collection);
+			next();
+		});
+	}
+});
 
 // merges :collection INTO GIVEN COLLECTION
 // :collection IS DELETED, given collection remains
@@ -246,7 +258,12 @@ app.get("/collection/:collection/contacts", function (req, res, next) {
 });
 
 // create new contact / add existing contact to collection
-app.post("/collection/:collection/contacts")
+app.post("/collection/:collection/contacts", function (req, res, next) {
+	req.collection.new_contact(req.body).then(function (contact) {
+		send_json(res, contact);
+		next();
+	});
+});
 
 // remove contacts from collection, creating a new collection for them
 // returns the new collection
@@ -278,6 +295,16 @@ app.delete("/collection/:collection/successors", function (req, res, next) {
 		next();
 	});
 });
+
+/**
+ * Contact routes
+ */
+
+app.get("/contact/:contact")
+
+app.put("/contact/:contact")
+
+app.delete("/contact/:contact")
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));

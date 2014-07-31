@@ -81,6 +81,16 @@ Directory.prototype.collection = function (collection_id) {
 	return q(new Collection(this, parseInt(collection_id)));
 }
 
+Directory.prototype.contact = function (contact_id) {
+	var deferred = q.defer();
+	this.server.getNodeById(contact_id, function (err, node) {
+		var contact = new Contact(this, contact_id, node.data);
+		deferred.resolve(contact);
+		return;
+	}.bind(this));
+	return deferred.promise;
+}
+
 exports.Directory = Directory;
 
 /**
@@ -768,23 +778,39 @@ Collection.prototype.remove_successor = function (collection) {
 // joins a contact (existing/new) to a collection
 // existing if ID provided, new if info provided
 Collection.prototype.new_contact = function (contact_info) {
-	var data_str = Object.keys(contact_info).map(function (key) {
-		return key + ": '" + contact_info[key] + "'";
-	}).join(", ")
-	return promise_query(this.directory.server,
-		[
-			"START n=node({collection_id})",
-			"CREATE (new_contact:Contact {" + data_str + "}),",
-			"(new_contact)-[:IN_COLLECTION]->(n)",
-			"RETURN new_contact"
-		], {
-			collection_id : this.collection_id
-		},
-		function (results) {
-			var contact_id = results[0].new_contact.id;
-			return new Contact(this.directory, contact_id, contact_info);
-		}.bind(this)
-	);
+	if (!(contact_info instanceof Object) || contact_info.contact_id) {
+		var contact_id = contact_info.contact_id || contact_id;
+		return promise_query(this.directory.server,
+			[
+				"START contact=node({contact_id}), collection=node({collection_id})",
+				"CREATE (contact)-[:IN_COLLECTION]->(collection)",
+				"RETURN contact"
+			], {
+				contact_id : contact_id,
+				collection_id : this.collection_id
+			}, function (results) {
+				return new Contact(this.directory, contact_id, results[0].contact.data);
+			}.bind(this)
+		);
+	} else {
+		var data_str = Object.keys(contact_info).map(function (key) {
+			return key + ": '" + contact_info[key] + "'";
+		}).join(", ");
+		return promise_query(this.directory.server,
+			[
+				"START n=node({collection_id})",
+				"CREATE (new_contact:Contact {" + data_str + "}),",
+				"(new_contact)-[:IN_COLLECTION]->(n)",
+				"RETURN new_contact"
+			], {
+				collection_id : this.collection_id
+			},
+			function (results) {
+				var contact_id = results[0].new_contact.id;
+				return new Contact(this.directory, contact_id, contact_info);
+			}.bind(this)
+		);
+	}
 }
 
 exports.Collection = Collection;
@@ -813,10 +839,31 @@ Contact.prototype.get_info = function () {
 	return this.contact_info;
 }
 
-Contact.prototype.remove = function () {
-	return promise_query(this.directory,
+// detaches the contact
+Contact.prototype.detach = function (collection) {
+	var collection_id = parseInt(collection instanceof Object
+		? collection.collection_id : collection
+	);
+	return promise_query(this.directory.server,
 		[
-			"START contact=node({contact_id})",
+			"START contact=node({contact_id}), collection=node({collection_id})",
+			"MATCH (contact)-[coll_link:IN_COLLECTION]->(collection)",
+			"DELETE coll_link"
+		], {
+			contact_id : this.contact_id,
+			collection_id : collection_id
+		}, function (results) {
+			return this;
+		}.bind(this)
+	);
+}
+
+// removes the contact completely
+Contact.prototype.remove = function () {
+	console.log(this.directory);
+	return promise_query(this.directory.server,
+		[
+			"START contact=node(" + this.contact_id + ")",
 			"OPTIONAL MATCH (contact)-[coll_link:IN_COLLECTION]->(coll:Collection)",
 			"OPTIONAL MATCH (contact)-[url_link:HAS_URL]->(url:Url)",
 			"OPTIONAL MATCH (contact)-[working_times:ONLY_WORKS]->(:Day)",
@@ -826,8 +873,9 @@ Contact.prototype.remove = function () {
 			contact_id : this.contact_id
 		},
 		function (results) {
+			console.log(results);
 			if (results.length) {
-				return new Collection(this.directory, result[0].coll.id);
+				return new Collection(this.directory, results[0].coll.id);
 			} else return {"success" : true};
 		}.bind(this)
 	)
@@ -844,8 +892,8 @@ var intersect = function (a, b) {
 }
 
 var promise_query = function (server, query, params, process_results) {
-	//console.log(query);
 	var query_str = query.join(" ");
+	console.log(query_str);
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
 		if (err) {
