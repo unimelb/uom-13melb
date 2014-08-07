@@ -300,11 +300,24 @@ app.delete("/collection/:collection/successors", function (req, res, next) {
  * Contact routes
  */
 
-app.get("/contact/:contact")
+/*app.get("/contact/:contact", function (req, res, next) {
 
-app.put("/contact/:contact")
+});*/
 
-app.delete("/contact/:contact")
+app.put("/contact/:contact", function (req, res, next) {
+	req.contact.update(req.body).then(function (contact) {
+		send_json(res, contact);
+		next();
+	});
+});
+
+// detaches contact from supplied collection
+app.delete("/contact/:contact", function (req, res, next) {
+	req.contact.detach(req.body).then(function (contact) {
+		send_json(res, contact);
+		next();
+	});
+});
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));

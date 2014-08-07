@@ -856,14 +856,13 @@ Contact.prototype.detach = function (collection) {
 			return this;
 		}.bind(this)
 	);
-}
+};
 
 // removes the contact completely
 Contact.prototype.remove = function () {
-	console.log(this.directory);
 	return promise_query(this.directory.server,
 		[
-			"START contact=node(" + this.contact_id + ")",
+			"START contact=node({contact_id})",
 			"OPTIONAL MATCH (contact)-[coll_link:IN_COLLECTION]->(coll:Collection)",
 			"OPTIONAL MATCH (contact)-[url_link:HAS_URL]->(url:Url)",
 			"OPTIONAL MATCH (contact)-[working_times:ONLY_WORKS]->(:Day)",
@@ -879,7 +878,25 @@ Contact.prototype.remove = function () {
 			} else return {"success" : true};
 		}.bind(this)
 	)
-}
+};
+
+Contact.prototype.update = function (data) {
+	var fields = [];
+	var fields = Object.keys(data).map(function (key) {
+		return "contact." + key + " = '" + data[key].replace("'", "\\'") + "'";
+	});
+	return promise_query(this.directory.server,
+		[
+			"START contact=node({contact_id})",
+			"SET " + fields.join(","),
+			"RETURN contact"
+		], {
+			contact_id : this.contact_id
+		}, function (results) {
+			return this;
+		}.bind(this)
+	);
+};
 
 exports.Contact = Contact;
 
@@ -902,6 +919,7 @@ var promise_query = function (server, query, params, process_results) {
 			deferred.reject(err);
 			return;
 		}
+		console.log("done");
 		var processed_results = process_results(results);
 		deferred.resolve(processed_results);
 	});

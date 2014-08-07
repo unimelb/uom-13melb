@@ -766,7 +766,43 @@ describe("Directory System", function () {
 
 	describe("Contact", function () {
 		it("should contain the correct information for a contact");
-
+		describe("#update", function () {
+			it("should update the named fields with the given values",
+				function (done) {
+					var path = [
+						"BSB Student Services",
+						"Student Support Contact List",
+						"Student Support Services",
+						"Housing"
+					];
+					var new_name = (Math.random()).toString();
+					var old_name;
+					var edited_contact;
+					directory.root_area().then(function (area) {
+						return area.descend_along_path(path);
+					}).then(function (area) {
+						return area.all_contacts();
+					}).then(function (all_contacts) {
+						edited_contact = all_contacts[1].contacts[0];
+						old_name = edited_contact.contact_info.first_name;
+						return edited_contact.update({
+							first_name : new_name
+						});
+					}).then(function () {
+						return directory.contact(edited_contact.contact_id);
+					}).then(function (contact) {
+						expect(
+							contact.contact_info.first_name
+						).to.equal(new_name);
+						return edited_contact.update({
+							first_name : old_name
+						});
+					}).then(function () {
+						done();
+					});
+				}
+			);
+		})
 	});
 });
 
