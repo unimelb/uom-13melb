@@ -884,7 +884,7 @@ Contact.prototype.update = function (data) {
 	var fields = Object.keys(data).map(function (key) {
 		this.contact_info[key] = data[key];
 		return "contact." + key + " = '" + data[key].replace("'", "\\'") + "'";
-	});
+	}.bind(this));
 	return promise_query(this.directory.server,
 		[
 			"START contact=node({contact_id})",
