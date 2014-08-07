@@ -300,9 +300,10 @@ app.delete("/collection/:collection/successors", function (req, res, next) {
  * Contact routes
  */
 
-/*app.get("/contact/:contact", function (req, res, next) {
-
-});*/
+app.get("/contact/:contact", function (req, res, next) {
+	send_json(req.contact);
+	next();
+});
 
 app.put("/contact/:contact", function (req, res, next) {
 	req.contact.update(req.body).then(function (contact) {
