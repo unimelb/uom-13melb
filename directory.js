@@ -83,7 +83,7 @@ Directory.prototype.collection = function (collection_id) {
 
 Directory.prototype.contact = function (contact_id) {
 	var deferred = q.defer();
-	this.server.getNodeById(contact_id, function (err, node) {
+	this.server.getNodeById(parseInt(contact_id), function (err, node) {
 		var contact = new Contact(this, contact_id, node.data);
 		deferred.resolve(contact);
 		return;
@@ -822,7 +822,7 @@ exports.Collection = Collection;
 var Contact = function (directory, contact_id, contact_info, url) {
 
 	this.directory = directory;
-	this.contact_id = contact_id;
+	this.contact_id = parseInt(contact_id);
 	this.contact_info = contact_info;
 	if (url) this.url = url;
 }
@@ -881,14 +881,13 @@ Contact.prototype.remove = function () {
 };
 
 Contact.prototype.update = function (data) {
-	var fields = [];
 	var fields = Object.keys(data).map(function (key) {
 		return "contact." + key + " = '" + data[key].replace("'", "\\'") + "'";
 	});
 	return promise_query(this.directory.server,
 		[
 			"START contact=node({contact_id})",
-			"SET " + fields.join(","),
+			(fields.length ? "SET " + fields.join(",") : ""),
 			"RETURN contact"
 		], {
 			contact_id : this.contact_id
