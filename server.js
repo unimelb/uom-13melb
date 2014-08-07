@@ -39,7 +39,7 @@ var send_json = function (res, object) {
 			}
 		});
 	}
-	recursive_delete(object, "directory");
+	if (object) recursive_delete(object, "directory");
 	res.json(object);
 }
 
@@ -301,7 +301,8 @@ app.delete("/collection/:collection/successors", function (req, res, next) {
  */
 
 app.get("/contact/:contact", function (req, res, next) {
-	send_json(req.contact);
+	console.log(req.contact);
+	send_json(res, req.contact);
 	next();
 });
 
