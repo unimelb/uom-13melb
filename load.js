@@ -4,15 +4,18 @@ var q = require("q");
 
 var incorporate = function (headers, data, validations) {
 	var o = {};
+	var bad = false;
 	headers.forEach(function (header, i) {
 		if (i < data.length && data[i] != "") {
 			if (validations && validations[header] && !data[i].match(validations[header])) {
-				return false;
+				console.log(data[i] + " does not conform to " + validations[header]);
+				bad = true;
 			}
 			o[header] = data[i];
 		}
 	}.bind(this));
-	return o;
+	if (bad) return false;
+	else return o;
 }
 
 var datafile_generate_query = function (start_node, filename) {
@@ -27,6 +30,7 @@ var datafile_generate_query = function (start_node, filename) {
 		};
 		var path = [base];
 
+		var errors = [];
 		file_contents.split("\n").forEach(function (line, lineno) {
 			if (line.trim().length) {
 
@@ -42,8 +46,13 @@ var datafile_generate_query = function (start_node, filename) {
 					return datum.replace(/([^\\]|^)\"/g, "$1").replace(/\\/g, "");
 				});
 
+				var phone_number_like = /^(\+?[0-9 ]+(\)[0-9 ]+)?)?$/;
+				var name_like = /^[^0-9]+$/;
 				validations = {
-					phone : /^(\+?[0-9 ]+)?$/,
+					first_name : name_like,
+					last_name : name_like,
+					phone : phone_number_like,
+					fax : phone_number_like,
 					email : /^((?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\]))?$/,
 				}
 				
@@ -65,7 +74,7 @@ var datafile_generate_query = function (start_node, filename) {
 							["first_name", "last_name", "position", "phone", "email", "address", "note", "url", "fax"],
 						data, validations);
 						if (!incorporated) {
-							q.reject("Error on line " + lineno + ": " + line);
+							errors.push("Validation error on line " + lineno + ": " + line);
 						} else {
 							var new_contact = {
 								id : id++,
@@ -75,12 +84,16 @@ var datafile_generate_query = function (start_node, filename) {
 						}
 						break;
 					default:
-						q.reject("Line without recognised type marker.");
-						return;
+						errors.push("Line " + lineno + " has no type marker.");
 						break;
 				}
 			}
 		});
+		
+		if (errors.length) {
+			deferred.reject(errors);
+			return;
+		}
 
 		var print_data = function (json) {
 			var props = [];
