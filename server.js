@@ -5,6 +5,7 @@ var http = require("http");
 var airbrake = require("airbrake");
 var bodyParser = require("body-parser");
 var q = require("q");
+var multer = require("multer");
 
 var app = express();
 
@@ -12,6 +13,7 @@ var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
 app.use(bodyParser.urlencoded({
 	extended : true
 }));
+app.use(multer({ dest: './uploads/'}));
 app.use(airbrake.expressHandler());
 
 app.all('*', function(req, res, next) {
@@ -207,6 +209,18 @@ app.get("/area/:area/collections", function (req, res, next) {
 		});
 	} else next();
 });
+
+app.post("/area/:area/upload", function (req, res, next) {
+	if (req.files && req.files["datafile"]) {
+		req.area.bulk_import(req.files["datafile"]["path"]).then(function (result) {
+			send_json(res, result);
+			next();
+		});
+	} else {
+		res.json({error : "No file selected."});
+		next();
+	}
+})
 
 /**
  * Collection routes.

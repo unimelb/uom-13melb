@@ -10,7 +10,8 @@
     "neo4j": "~1.0",
     "q": "~1.0",
     "airbrake": "latest",
-    "body-parser": "latest"
+    "body-parser": "latest",
+    "multer" : "latest"
   },
   "devDependencies": {
     "grunt": "~0.4.1",

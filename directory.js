@@ -3,6 +3,7 @@
 var neo4j = require("neo4j");
 var q = require("q");
 var util = require("util");
+var datafile_generate_query = require("./load");
 
 //var server = new neo4j.GraphDatabase("http://localhost:7474");
 
@@ -581,6 +582,20 @@ Area.prototype.new_collection = function () {
 			area_id : this.area_id
 		}, function (results) {
 			return new Collection(this.directory, results[0].new_collection.id);
+		}.bind(this)
+	);
+}
+
+Area.prototype.bulk_import = function (filename) {
+	return datafile_generate_query(this.area_id, filename).then(
+		function (query) { // success
+			return promise_query(this.directory.server,
+				[query], {}, function (results) {
+					return this;
+				}.bind(this)
+			);
+		}.bind(this), function (err) { // failure
+			return q({error : err});
 		}.bind(this)
 	);
 }
