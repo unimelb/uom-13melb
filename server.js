@@ -137,6 +137,15 @@ app.delete("/area/:area", function (req, res, next) {
 	}
 });
 
+// orphan management
+
+app.get("/area/orphan", function (req, res, next) {
+	dir.orphan_areas().then(function (areas) {
+		send_json(res, areas);
+		next();
+	});
+});
+
 app.get("/area/:area/children", function (req, res, next) {
 	if (req.area) {
 		req.area.children().then(function (area) {
