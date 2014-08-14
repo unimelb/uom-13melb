@@ -39,7 +39,7 @@ var datafile_generate_query = function (start_node, filename) {
 				var area = path[path.length - 1];
 				if (area === undefined) {
 					errors.push("Indentation error on line " + lineno + ".");
-					continue;
+					return;
 				}
 
 				line = line.trim();
