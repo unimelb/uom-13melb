@@ -14,13 +14,13 @@ app.use(bodyParser.urlencoded({
 	extended : true
 }));
 app.use(multer({ dest: './uploads/'}));
-app.use(airbrake.expressHandler());
+//app.use(airbrake.expressHandler());
 
 app.all('*', function(req, res, next) {
 	res.header("Access-Control-Allow-Origin", "*");
 	res.header("Access-Control-Allow-Headers", "X-Requested-With");
 	res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-	res.header("Content-Type", "application/json");
+	//res.header("Content-Type", "application/json");
 	next();
 });
 
@@ -42,7 +42,7 @@ var send_json = function (res, object) {
 		});
 	}
 	if (object) recursive_delete(object, "directory");
-	res.json(object);
+	res.send(object);
 }
 
 var send_error = function (res, text) {
@@ -85,7 +85,8 @@ app.param("contact", function (req, res, next, id) {
 });
 
 app.get("/", function (req, res, next) {
-	res.send("{}");
+	res.json({});
+	next();
 });
 
 app.get("/area/:area", function (req, res, next) {
@@ -342,6 +343,10 @@ app.delete("/contact/:contact", function (req, res, next) {
 		send_json(res, contact);
 		next();
 	});
+});
+
+app.all("*", function (req, res, next) {
+	// do nothing
 });
 
 app.listen(process.env.PORT || 5000);

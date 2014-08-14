@@ -925,7 +925,7 @@ var intersect = function (a, b) {
 
 var promise_query = function (server, query, params, process_results) {
 	var query_str = query.join(" ");
-	console.log(query_str);
+	//console.log(query_str);
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
 		if (err) {
@@ -934,7 +934,7 @@ var promise_query = function (server, query, params, process_results) {
 			deferred.reject(err);
 			return;
 		}
-		console.log("done");
+		//console.log("done");
 		var processed_results = process_results(results);
 		deferred.resolve(processed_results);
 	});
