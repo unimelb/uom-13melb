@@ -37,7 +37,7 @@ var datafile_generate_query = function (start_node, filename) {
 				var indent = line.match(/^\t*/g)[0].length + 1;
 				while (indent < path.length) path.pop();
 				var area = path[path.length - 1];
-				if (area === undefined) {
+				if (area === undefined || area.contacts === undefined) {
 					errors.push("Indentation error on line " + lineno + ".");
 					return;
 				}
