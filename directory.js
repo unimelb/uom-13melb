@@ -170,13 +170,14 @@ Area.prototype.children = function () {
 	);
 }
 
-Area.prototype.descendents = function () {
+Area.prototype.descendents = function (hops) {
 	var area = this;
+	var range = hops !== undefined && hops !== null ? util.format("*0..%d", hops) : "*";
 
 	return promise_query(this.directory.server,
 		[
 			"START n=node({area_id})",
-			"MATCH (n)-[depth:PARENT_OF*]->(dp:Area)",
+			"MATCH (n)-[depth:PARENT_OF" + range + "]->(dp:Area)",
 			"OPTIONAL MATCH (dp)-[:PARENT_OF]->(d:Area)",
 			"RETURN d, depth, dp"
 		],

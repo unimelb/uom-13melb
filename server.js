@@ -158,7 +158,9 @@ app.get("/area/:area/children", function (req, res, next) {
 
 app.get("/area/:area/descendents", function (req, res, next) {
 	if (req.area) {
-		req.area.descendents().then(function (area) {
+		var hops = null;
+		if (req.query.depth) hops = parseInt(req.query.depth);
+		req.area.descendents(hops).then(function (area) {
 			send_json(res, area);
 			next();
 		})
