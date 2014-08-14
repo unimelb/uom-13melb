@@ -350,7 +350,7 @@ app.get("/orphan/area", function (req, res, next) {
 	});
 });
 
-app.delete("/orphan/area/:area", function (req, res, next)) {
+app.delete("/orphan/area/:area", function (req, res, next) {
 	req.area.remove().then(function (result) {
 		send_json(res, result);
 		next();
