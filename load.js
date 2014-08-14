@@ -50,7 +50,7 @@ var datafile_generate_query = function (start_node, filename) {
 					return datum.replace(/([^\\]|^)\"/g, "$1").replace(/\\/g, "");
 				});
 
-				var phone_number_like = /^x?(\+?[0-9 ]+(\)[0-9 ]+)?)?$/;
+				var phone_number_like = /^((\+|x|\(?[0-9 ]+\))?([0-9 ]+)?)?$/;
 				var name_like = /^[^0-9]+$/;
 				validations = {
 					first_name : name_like,
