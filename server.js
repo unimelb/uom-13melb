@@ -138,15 +138,6 @@ app.delete("/area/:area", function (req, res, next) {
 	}
 });
 
-// orphan management
-
-app.get("/area/orphan", function (req, res, next) {
-	dir.orphan_areas().then(function (areas) {
-		send_json(res, areas);
-		next();
-	});
-});
-
 app.get("/area/:area/children", function (req, res, next) {
 	if (req.area) {
 		req.area.children().then(function (area) {
@@ -346,6 +337,29 @@ app.delete("/contact/:contact", function (req, res, next) {
 		next();
 	});
 });
+
+/**
+ * Orphan routes
+ */
+
+// get area orphans
+app.get("/orphan/area", function (req, res, next) {
+	dir.orphan_areas().then(function (areas) {
+		send_json(res, areas);
+		next();
+	});
+});
+
+app.delete("/orphan/area/:area", function (req, res, next)) {
+	req.area.remove().then(function (result) {
+		send_json(res, result);
+		next();
+	});
+});
+
+/**
+ * Dummy ending middleware
+ */
 
 app.all("*", function (req, res, next) {
 	// do nothing

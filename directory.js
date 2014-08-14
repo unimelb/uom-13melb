@@ -61,11 +61,11 @@ Directory.prototype.area = function (area_id) {
 	return deferred.promise;
 }
 
-Directory.orphan_areas = function () {
-	return promise_query(
+Directory.prototype.orphan_areas = function () {
+	return promise_query(this.server,
 		[
 			"MATCH (orphan:Area)",
-			"WHERE root.is_root = false AND NOT ()-[:PARENT_OF]->(orphan)",
+			"WHERE NOT has(orphan.is_root) AND NOT ()-[:PARENT_OF]->(orphan)",
 			"RETURN orphan"
 		],
 		{},
