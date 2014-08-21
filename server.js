@@ -19,11 +19,12 @@ app.use(multer({ dest: './uploads/'}));
 app.all('*', function(req, res, next) {
 	res.header("Access-Control-Allow-Origin", "*");
 	res.header("Access-Control-Allow-Headers", "X-Requested-With");
-	res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+	res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE");
 	//res.header("Content-Type", "application/json");
 	next();
 });
 
+console.log(process.env.GRAPHENEDB_URL);
 var server = new neo4j.GraphDatabase(process.env.GRAPHENEDB_URL);
 
 var dir = new directory.Directory(server);
@@ -361,9 +362,10 @@ app.delete("/orphan/area/:area", function (req, res, next) {
  * Dummy ending middleware
  */
 
-app.all("*", function (req, res, next) {
+/*app.all("*", function (req, res, next) {
 	// do nothing
-});
+	next();
+});*/
 
 app.listen(process.env.PORT || 5000);
 console.log("Listening on port " + (process.env.PORT || 5000));

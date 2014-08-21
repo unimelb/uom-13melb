@@ -142,7 +142,7 @@ Area.prototype.parent = function () {
 		],
 		{"area_id" : this.area_id},
 		function (parents) {
-			if (!parents.length) return null;
+			if (!parents.length) return {};
 			var parent = parents[0]["parent"];
 			return new Area(area.directory, parent.id, parent.data);
 		}
@@ -172,7 +172,7 @@ Area.prototype.children = function () {
 
 Area.prototype.descendents = function (hops) {
 	var area = this;
-	var range = hops !== undefined && hops !== null ? util.format("*0..%d", hops) : "*";
+	var range = hops !== undefined && hops !== null ? util.format("*0..%d", hops) : "*0..";
 
 	return promise_query(this.directory.server,
 		[
@@ -191,10 +191,10 @@ Area.prototype.descendents = function (hops) {
 			descendents.forEach(function (d) {
 				var depth = d.depth.length;
 				if (!d.d) {
-					if (depth == 1) {
+					/*if (depth == 1) {
 						tree_dict[area.area_id].push(d.dp.id);
 						area_dict[d.dp.id] = new Area(area.directory, d.dp.id, d.dp.data);
-					}
+					}*/
 				} else {
 					var depth = d.depth.length;
 				
@@ -379,7 +379,6 @@ Area.prototype.all_contacts = function () {
 			"START n=node({area_id})",
 			"MATCH (n)<-[:RESPONSIBLE_FOR]-(c:Collection)",
 			"MATCH (contact:Contact)-[:IN_COLLECTION]->(c)",
-			"OPTIONAL MATCH (contact)-[:HAS_URL]->(url:Url)",
 			"OPTIONAL MATCH (c)-[succ:COMES_BEFORE]->(c2:Collection)",
 			"RETURN contact,url,c,succ,c2"
 		],
