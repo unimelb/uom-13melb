@@ -265,6 +265,11 @@ Area.prototype.search = function (search_str) {
 	var area = this;
 	search_str = search_str.toLowerCase().trim().replace(/ +/g, " ").split(" ");
 	var search_regex = util.format("(%s)", search_str.join("|"));
+	/*var all_words_regex = search_str.map(function(word) {
+		return util.format("(?=.*\\b%s\\b)", word);
+	}).join("");*/
+	var all_words_regex = search_str.join(" ");
+	console.log(all_words_regex);
 
 	return promise_query(this.directory.server,
 		[
@@ -272,12 +277,12 @@ Area.prototype.search = function (search_str) {
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target), (n:Area)-[:PARENT_OF*0..]->(m)",
 			util.format("WHERE target.name =~ \"(?i).*(^| )%s.*\"", search_regex),
 			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
-			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
+			util.format("WHERE c.position =~ \"(?i)^%s.+\"", all_words_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
 			"RETURN target, link, m, COUNT(a), c",
 			"UNION START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
-			util.format("WHERE c.position =~ \"(?i).*(^| )%s.*\"", search_regex),
+			util.format("WHERE c.position =~ \"(?i)^%s.*\"", all_words_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
 			"RETURN target, link, m, COUNT(a), c"
 		],
@@ -323,14 +328,19 @@ Area.prototype.search = function (search_str) {
 
 			var result_list = [];
 			Object.keys(paths).forEach(function (target_id) {
-				result_list.push(paths[target_id].reverse().slice(1));
+				paths[target_id].reverse().slice(1);
+				result_list.push({path : paths[target_id], score : 0});
 			});
 			// further filtering
-			var reduced = result_list.filter(function (path) {
+			var reduced = result_list.filter(function (path_obj) {
+				var path = path_obj.path;
 				var position = path[path.length - 1].matched_contact
 					? " " + path[path.length - 1].matched_contact.contact_info.position
 					: "";
 				var pathstr = (path.map(function (path_item) {
+					path_obj.score += path_item.name.split(/\b/).reduce(function (acc, item) {
+						return acc + (search_str.indexOf(item.toLowerCase()) > -1) ? 1 : 0;
+					}, 0);
 					return path_item.name + (path_item.matched_contact
 						? " " + path_item.matched_contact.contact_info.position
 						: ""
@@ -342,8 +352,13 @@ Area.prototype.search = function (search_str) {
 					return pathstr.indexOf(term) > -1;
 				});
 			});
-
-			return reduced;
+			console.log(reduced);
+			reduced.sort(function (a, b) {
+				var score = b.score - a.score;
+				if (score) return score;
+				else return a.path.length - b.path.length;
+			});
+			return reduced.map(function (item) { return item.path; });
 		}
 	);
 }
