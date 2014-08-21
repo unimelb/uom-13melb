@@ -380,7 +380,7 @@ Area.prototype.all_contacts = function () {
 			"MATCH (n)<-[:RESPONSIBLE_FOR]-(c:Collection)",
 			"MATCH (contact:Contact)-[:IN_COLLECTION]->(c)",
 			"OPTIONAL MATCH (c)-[succ:COMES_BEFORE]->(c2:Collection)",
-			"RETURN contact,url,c,succ,c2"
+			"RETURN contact,c,succ,c2"
 		],
 		{"area_id" : this.area_id},
 		function (results) {
@@ -474,10 +474,11 @@ Area.prototype.new_child = function (data) {
 			data.note ? ", note: {note}" : "",
 			"}),",
 			"(n)-[:PARENT_OF]->(new_area)",
-			"RETURN (new_area)"
+			"RETURN new_area"
 		],
 		params,
 		function (results) {
+			console.log(results[0].new_area);
 			var area = results[0].new_area;
 			return new Area(this.directory, area.id, area.data);
 		}.bind(this)

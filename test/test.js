@@ -385,7 +385,8 @@ describe("Directory System", function () {
 					expect(former_parent.area_id).to.equal(root.area_id);
 					return child.parent();
 				}).then(function (parent) {
-					expect(parent).to.be.null;
+					console.log(parent);
+					expect(Object.keys(parent)).to.have.length(0);
 					return child.change_parent(root);
 				}).then(function (parent) {
 					done();
@@ -549,7 +550,7 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"General enquiries"
+						"Financial Aid"
 					];
 
 					var collection;
@@ -589,7 +590,7 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"General enquiries"
+						"Financial Aid"
 					];
 
 					var collection;
@@ -630,27 +631,34 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"Housing"
+						"Financial Aid"
 					];
 
 					var pred, succ;
 
 					directory.root_area().then(function (area) {
-						return area.descend_along_path(path)
+						console.log(".");
+						return area.descend_along_path(path);
 					}).then(function (area) {
+						console.log(".");
 						return area.collections();
 					}).then(function (collections) {
+						console.log(".");
+						console.log(collections);
 						pred = collections[0];
 						succ = collections[1];
 						return pred.add_successor(succ);
 					}).then(function (collection) {
+						console.log(".");
 						return pred.successors();
 					}).then(function (successors) {
+						console.log(".");
 						expect(successors.map(function (successor) {
 							return successor.collection_id;
 						})).to.contain(succ.collection_id);
 						return pred.remove_successor(succ);
 					}).then(function () {
+						console.log(".");
 						done();
 					});
 				}
@@ -664,7 +672,7 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"Housing"
+						"Financial Aid"
 					];
 
 					var pred, succ;
@@ -732,7 +740,7 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"Housing"
+						"Financial Aid"
 					];
 
 					directory.root_area().then(function (area) {
@@ -773,7 +781,7 @@ describe("Directory System", function () {
 						"BSB Student Services",
 						"Student Support Contact List",
 						"Student Support Services",
-						"Housing"
+						"Financial Aid"
 					];
 					var new_name = (Math.random()).toString();
 					var old_name;
@@ -783,7 +791,11 @@ describe("Directory System", function () {
 					}).then(function (area) {
 						return area.all_contacts();
 					}).then(function (all_contacts) {
-						edited_contact = all_contacts[1].contacts[0];
+						for (var i = 0; i < all_contacts.length; i++) {
+							if (all_contacts[i].contacts.length) {
+								edited_contact = all_contacts[1].contacts[0];
+							}
+						}
 						old_name = edited_contact.contact_info.first_name;
 						return edited_contact.update({
 							first_name : new_name
