@@ -1,0 +1,17 @@
+{
+  "name": "13melb-server",
+  "version": "0.1.0",
+  "private": true,
+  "main": "server.coffee",
+  "scripts": {
+    "start": "coffee server.coffee"
+  },
+  "dependencies": {
+    "express": "latest",
+    "q": "~1.0",
+    "body-parser": "latest",
+    "neo4j" : "1.1.0"
+  },
+  "devDependencies": {
+  }
+}
