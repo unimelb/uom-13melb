@@ -1,0 +1,6 @@
+uploads/
+.bowerrc
+.DS_Store
+env_vars
+node_modules
+documentation
