@@ -46,7 +46,7 @@ Directory.prototype.root_area = function () {
 }
 
 Directory.prototype.area = function (area_id) {
-	var dir = this;
+	if (area_id == "root") return this.root_area();
 	var deferred = q.defer();
 	this.server.getNodeById(area_id, function (err, node) {
 		if (err) {
@@ -54,10 +54,10 @@ Directory.prototype.area = function (area_id) {
 			throw err;
 		}
 		var data = node.data;
-		var area = new Area(dir, node.id, data);
+		var area = new Area(this, node.id, data);
 		deferred.resolve(area);
 		return;
-	});
+	}.bind(this));
 	return deferred.promise;
 }
 
@@ -90,6 +90,32 @@ Directory.prototype.contact = function (contact_id) {
 		return;
 	}.bind(this));
 	return deferred.promise;
+}
+
+Directory.prototype.contact_search = function (query_str) {
+	var fields = ["first_name", "last_name"]
+	var terms = query_str.split(" ");
+	var where_clause = terms.map(function (term) {
+		return "(" + fields.map(function (field) {
+			return (
+				"LOWER(contact." + field + ") =~ '" +
+				term.toLowerCase().replace(/[^a-z0-9 -]/g, "") + ".*'"
+			);
+		}).join(" OR ") + ")";
+	}).join(" AND ");
+	return promise_query(this.server,
+		[
+			"MATCH (contact:Contact) WHERE ",
+			where_clause + " RETURN contact"
+		], {},
+		function (contacts) {
+			return contacts.map(function (contact) {
+				var data = contact["contact"].data;
+				data.contact_id = contact["contact"].id;
+				return data;
+			});
+		}
+	);
 }
 
 exports.Directory = Directory;
@@ -276,15 +302,13 @@ Area.prototype.search = function (search_str) {
 			"START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target), (n:Area)-[:PARENT_OF*0..]->(m)",
 			util.format("WHERE target.name =~ \"(?i).*(^| )%s.*\"", search_regex),
-			"OPTIONAL MATCH (target)<--(:Collection)<-[*]-(c:Contact)",
-			util.format("WHERE c.position =~ \"(?i)^%s.+\"", all_words_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
-			"RETURN target, link, m, COUNT(a), c",
+			"RETURN target, link, m, COUNT(a)",
 			"UNION START n=node({area_id})",
 			"MATCH (m:Area)-[link:PARENT_OF*]->(target)<--(:Collection)<-[*]-(c:Contact)",
 			util.format("WHERE c.position =~ \"(?i)^%s.*\"", all_words_regex),
 			"OPTIONAL MATCH (target)-[:PARENT_OF*]->()<-[*]-(a:Contact)",
-			"RETURN target, link, m, COUNT(a), c"
+			"RETURN target, link, m, COUNT(a)"
 		],
 		{"area_id" : this.area_id},
 		function (results) {

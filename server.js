@@ -318,6 +318,18 @@ app.delete("/collection/:collection/successors", function (req, res, next) {
  * Contact routes
  */
 
+app.get("/contact", function (req, res, next) {
+	if (!req.query.q) {
+		send_json(res, {});
+		next();
+	} else {
+		dir.contact_search(decodeURIComponent(req.query.q)).then(function (contacts) {
+			send_json(res, contacts);
+			next();
+		});
+	}
+});
+
 app.get("/contact/:contact", function (req, res, next) {
 	console.log(req.contact);
 	send_json(res, req.contact);
@@ -354,6 +366,29 @@ app.get("/orphan/area", function (req, res, next) {
 app.delete("/orphan/area/:area", function (req, res, next) {
 	req.area.remove().then(function (result) {
 		send_json(res, result);
+		next();
+	});
+});
+
+/**
+ * Batch routes
+ */
+
+app.get("/batch/area/all_contacts", function (req, res, next) {
+	var areas = req.query.area.split(",");
+	var contacts = {};
+	console.log(areas);
+	q.all(areas.map(function (area_id) {
+		return dir.area(area_id).then(function (area) {
+			console.log(area);
+			return area.all_contacts();
+		});
+	})).then(function (results) {
+		console.log(results);
+		areas.forEach(function (area_id, index) {
+			contacts[area_id] = results[index];
+		});
+		send_json(res, contacts);
 		next();
 	});
 });
