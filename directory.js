@@ -834,7 +834,7 @@ Collection.prototype.remove_successor = function (collection) {
 // existing if ID provided, new if info provided
 Collection.prototype.new_contact = function (contact_info) {
 	if (!(contact_info instanceof Object) || contact_info.contact_id) {
-		var contact_id = contact_info.contact_id || contact_id;
+		var contact_id = parseInt(contact_info.contact_id || contact_id);
 		return promise_query(this.directory.server,
 			[
 				"START contact=node({contact_id}), collection=node({collection_id})",
