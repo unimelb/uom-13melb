@@ -5,18 +5,6 @@ var q = require("q");
 var util = require("util");
 var datafile_generate_query = require("./load");
 
-//var server = new neo4j.GraphDatabase("http://localhost:7474");
-
-/*var create_class = function (methods) {
-	var prototype = "__init__" in methods ? methods.__init__ : function () { };
-	Object.keys(methods).forEach(function (method) {
-		if (method != "__init__") {
-			prototype.prototype[method] = methods[method];
-		}
-	});
-	return prototype;
-}*/
-
 /**
  * Directory
  */
@@ -79,7 +67,12 @@ Directory.prototype.orphan_areas = function () {
 }
 
 Directory.prototype.collection = function (collection_id) {
-	return q(new Collection(this, parseInt(collection_id)));
+	var deferred = q.defer();
+	this.server.getNodeById(parseInt(collection_id), function (err, node) {
+		var collection = new Collection(this, parseInt(collection_id), node.data);
+		deferred.resolve(collection);
+	}.bind(this));
+	return deferred.promise;
 }
 
 Directory.prototype.contact = function (contact_id) {
@@ -87,7 +80,6 @@ Directory.prototype.contact = function (contact_id) {
 	this.server.getNodeById(parseInt(contact_id), function (err, node) {
 		var contact = new Contact(this, contact_id, node.data);
 		deferred.resolve(contact);
-		return;
 	}.bind(this));
 	return deferred.promise;
 }
@@ -432,6 +424,7 @@ Area.prototype.all_contacts = function () {
 				if (!(coll_id in all_contacts)) {
 					all_contacts[coll_id] = {
 						collection_id : coll_id,
+						primary: result.c.data.primary || false,
 						contacts : [],
 						successors : []
 					};
@@ -621,7 +614,7 @@ Area.prototype.new_collection = function () {
 		], {
 			area_id : this.area_id
 		}, function (results) {
-			return new Collection(this.directory, results[0].new_collection.id);
+			return new Collection(this.directory, results[0].new_collection.id, result[0].new_collection.data);
 		}.bind(this)
 	);
 }
@@ -646,9 +639,10 @@ exports.Area = Area;
  * Collection
  */
 
-var Collection = function (directory, collection_id) {
+var Collection = function (directory, collection_id, data) {
 	this.directory = directory;
 	this.collection_id = collection_id;
+	this.primary = !!data.primary;
 }
 
 Collection.prototype.contacts = function () {
@@ -675,6 +669,19 @@ Collection.prototype.contacts = function () {
 	);
 }
 
+Collection.prototype.toggle_primary = function () {
+	return promise_query(this.directory.server,
+		[
+			"START n=node({collection_id})",
+			"SET n.primary = COALESCE(not n.primary, true)",
+			"RETURN n"
+		],
+		{"collection_id" : this.collection_id},
+		function (results) {
+			return new Collection(this.directory, results[0].n.id, results[0].n.data);
+		}.bind(this));
+}
+
 Collection.prototype.successors = function () {
 	var collection = this;
 
@@ -688,7 +695,7 @@ Collection.prototype.successors = function () {
 		function (results) {
 			return results.map(function (result) {
 				return new Collection(
-					collection.directory, result["succ"].id
+					collection.directory, result["succ"].id, result.succ.data
 				);
 			})
 		}
@@ -735,7 +742,7 @@ Collection.prototype.split = function (contacts) {
 			],
 			{},
 			function (results) {
-				return new Collection(this.directory, results[0].new_collection.id);
+				return new Collection(this.directory, results[0].new_collection.id, result[0].new_collection.data);
 			}.bind(this)
 		)
 	}.bind(this));
@@ -929,7 +936,7 @@ Contact.prototype.remove = function () {
 		function (results) {
 			console.log(results);
 			if (results.length) {
-				return new Collection(this.directory, results[0].coll.id);
+				return new Collection(this.directory, results[0].coll.id, results[0].coll.data);
 			} else return {"success" : true};
 		}.bind(this)
 	)

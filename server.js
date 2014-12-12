@@ -244,6 +244,13 @@ app.get("/collection/:collection", function (req, res, next) {
 	});
 });
 
+app.post("/collection/:collection/primary", function (req, res, next) {
+	req.collection.toggle_primary().then(function (collection) {
+		send_json(res, collection);
+		next();
+	});
+});
+
 // creates an entirely new collection. Should only be used when
 // there are no existing collections.
 app.post("/area/:area/collections", function (req, res, next) {
