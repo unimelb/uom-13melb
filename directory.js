@@ -33,20 +33,23 @@ Directory.prototype.root_area = function () {
 	);
 }
 
-Directory.prototype.area = function (area_id) {
-	if (area_id == "root") return this.root_area();
+Directory.prototype.getNodeById = function (id, type) {
 	var deferred = q.defer();
-	this.server.getNodeById(area_id, function (err, node) {
+	this.server.getNodeById(id, function (err, node) {
 		if (err) {
 			deferred.reject(err);
-			throw err;
+			return;
 		}
 		var data = node.data;
-		var area = new Area(this, node.id, data);
+		var area = new type(this, node.id, data);
 		deferred.resolve(area);
 		return;
 	}.bind(this));
 	return deferred.promise;
+}
+Directory.prototype.area = function (area_id) {
+	if (area_id == "root") return this.root_area();
+	else return this.getNodeById(area_id, Area);
 }
 
 Directory.prototype.orphan_areas = function () {
@@ -67,21 +70,11 @@ Directory.prototype.orphan_areas = function () {
 }
 
 Directory.prototype.collection = function (collection_id) {
-	var deferred = q.defer();
-	this.server.getNodeById(parseInt(collection_id), function (err, node) {
-		var collection = new Collection(this, parseInt(collection_id), node.data);
-		deferred.resolve(collection);
-	}.bind(this));
-	return deferred.promise;
+	return this.getNodeById(collection_id, Collection);
 }
 
 Directory.prototype.contact = function (contact_id) {
-	var deferred = q.defer();
-	this.server.getNodeById(parseInt(contact_id), function (err, node) {
-		var contact = new Contact(this, contact_id, node.data);
-		deferred.resolve(contact);
-	}.bind(this));
-	return deferred.promise;
+	return this.getNodeById(contact_id, Contact);
 }
 
 Directory.prototype.contact_search = function (query_str) {
@@ -395,7 +388,7 @@ Area.prototype.collections = function () {
 			return results.map(function (result) {
 				var collection = result["collection"];
 				return new Collection(
-					area.directory, collection.id
+					area.directory, collection.id, collection.data
 				);
 			});
 		}
@@ -972,16 +965,12 @@ var intersect = function (a, b) {
 
 var promise_query = function (server, query, params, process_results) {
 	var query_str = query.join(" ");
-	//console.log(query_str);
 	var deferred = q.defer();
 	server.query(query_str, params, function (err, results) {
 		if (err) {
-			console.log(err);
-			throw err;
 			deferred.reject(err);
 			return;
 		}
-		//console.log("done");
 		var processed_results = process_results(results);
 		deferred.resolve(processed_results);
 	});

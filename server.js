@@ -9,7 +9,7 @@ var multer = require("multer");
 
 var app = express();
 
-var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
+//var airbrake = require('airbrake').createClient(process.env.AIRBRAKE_API_KEY);
 app.use(bodyParser.urlencoded({
 	extended : true
 }));
@@ -63,26 +63,40 @@ app.param("area", function (req, res, next, id) {
 			next();
 		},
 		function (err) {
-			console.log(err);
 			res.json({error: "No area."});
 			req.area = null;
-			next();
+			next(err);
 		}
 	);
 });
 
 app.param("collection", function (req, res, next, id) {
-	dir.collection(id).then(function (collection) {
-		req.collection = collection;
-		next();
-	});
+	dir.collection(id).then(
+		function (collection) {
+			req.collection = collection;
+			next();
+		},
+		function (err) {
+			res.json({error: "No collection."});
+			next(err);
+		}
+	);
 });
 
 app.param("contact", function (req, res, next, id) {
-	dir.contact(id).then(function (contact) {
-		req.contact = contact;
-		next();
-	});
+	dir.contact(id).then(
+		function (contact) {
+			req.contact = contact;
+			next();
+		},
+		function (err) {
+			res.json({error: "No contact."});
+			next(err);
+		});
+});
+
+app.use(function(err, req, res, next) {
+  res.end();
 });
 
 app.get("/", function (req, res, next) {
