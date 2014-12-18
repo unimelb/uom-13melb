@@ -607,7 +607,7 @@ Area.prototype.new_collection = function () {
 		], {
 			area_id : this.area_id
 		}, function (results) {
-			return new Collection(this.directory, results[0].new_collection.id, result[0].new_collection.data);
+			return new Collection(this.directory, results[0].new_collection.id, results[0].new_collection.data);
 		}.bind(this)
 	);
 }
